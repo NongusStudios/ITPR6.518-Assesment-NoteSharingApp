@@ -1,7 +1,13 @@
 package main
 
+import "log"
+
 func main() {
-	a := App{}
-	a.Initialize()
-	a.Run("")
+	app, err := InitApp()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	app.Run()
 }

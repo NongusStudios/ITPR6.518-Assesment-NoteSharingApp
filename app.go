@@ -12,20 +12,10 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	_ "github.com/jackc/pgx/v5/stdlib" //use pgx in database/sql mode
-)
-
-// PostgreSQl configuration if not passed as env variables
-const (
-	host     = "localhost" //127.0.0.1
-	port     = 5432
-	user     = "postgres"
-	password = "postgres"
-	dbname   = "ESD"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 var (
-	err  error
 	wait time.Duration
 )
 
@@ -33,90 +23,90 @@ type App struct {
 	Router   *mux.Router
 	db       *sql.DB
 	bindport string
-	username string
-	role     string
+	//username string
+	//role     string
 }
 
-func (a *App) Initialize() {
-	a.bindport = "80"
+func findBindPort() string {
+	port := "8080"
 
-	//check if a different bind port was passed from the CLI
-	//os.Setenv("PORT", "8080")
-	tempport := os.Getenv("PORT")
-	if tempport != "" {
-		a.bindport = tempport
+	tempPort := os.Getenv("PORT")
+	if tempPort != "" {
+		port = tempPort
 	}
 
 	if len(os.Args) > 1 {
-		s := os.Args[1]
+		s := os.Args[argBindport]
 
 		if _, err := strconv.ParseInt(s, 10, 64); err == nil {
-			log.Printf("Using port %s", s)
-			a.bindport = s
+			port = s
 		}
 	}
 
-	// Create a string that will be used to make a connection later
-	// Note Password has been left out, which is best to avoid issues when using null password
-	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
-	log.Println("Connecting to PostgreSQL")
-	log.Println(psqlInfo)
-	db, err := sql.Open("pgx", psqlInfo)
-	a.db = db
-	//db, err = sql.Open("sqlite3", "db.sqlite3")
+	return port
+}
+
+func connectToPostgreSQL() (*sql.DB, error) {
+	dbInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+						   dbHost, dbPort, dbUser, dbPassword, dbName)
+
+	log.Println(dbInfo)
+
+	db, err := sql.Open("pgx", dbInfo)
+
+	if err != nil { return nil, err }
+
+	// Test DB connection
+	err = db.Ping()
 	if err != nil {
-		log.Println("Invalid DB arguments, or github.com/lib/pq not installed")
-		log.Fatal(err)
+		return nil, err
 	}
 
-	// test connection
-	err = a.db.Ping()
-	if err != nil {
-		log.Fatal("Connection to specified database failed: ", err)
-	}
+	return db, nil
+}
 
-	log.Println("Database connected successfully")
+func initRouter(a *App) *mux.Router {
+	r := mux.NewRouter()
 
-	//check data import status
-	_, err = os.Stat("./imported")
+	staticFileDirectory := http.Dir("./staticResources/")
+	staticFileHandler := http.StripPrefix("/staticResources/", http.FileServer(staticFileDirectory))
+	r.PathPrefix("/staticResources/").Handler(staticFileHandler).Methods("GET")
+
+	// Add handler functions
+	r.HandleFunc("/", a.indexHandler).Methods("GET")
+
+	return r
+}
+
+
+
+func InitApp() (App, error) {
+	a := App{}
+
+	// Get the bindport
+	a.bindport = findBindPort()
+	log.Printf("Server using port %s\n", a.bindport)
+
+	log.Println("Attempting to establish connection to PostgreSQL server")
+	
+	var err error
+	a.db, err = connectToPostgreSQL()
+	if err != nil { return App{}, err }
+
+	// Check if tables imported
+	_, err = os.Stat(fmt.Sprintf("./%s", dbFileLock))
 	if os.IsNotExist(err) {
-		log.Println("--- Importing demo data")
 		a.importData()
 	}
 
-	//set some defaults for the authentication to also support HTTP and HTTPS
-	a.setupAuth()
+	log.Println("Successfully connected to PostgreSQL server")
 
-	a.Router = mux.NewRouter()
-	a.initializeRoutes()
+	a.Router = initRouter(&a)
+
+	return a, nil
 }
 
-func (a *App) initializeRoutes() {
-	// setup static content route - strip ./assets/assets/[resource]
-	// to keep /assets/[resource] as a route
-	staticFileDirectory := http.Dir("./statics/")
-	staticFileHandler := http.StripPrefix("/statics/", http.FileServer(staticFileDirectory))
-	a.Router.PathPrefix("/statics/").Handler(staticFileHandler).Methods("GET")
-
-	a.Router.HandleFunc("/", a.indexHandler).Methods("GET")
-	a.Router.HandleFunc("/login", a.loginHandler).Methods("POST", "GET")
-	a.Router.HandleFunc("/logout", a.logoutHandler).Methods("GET")
-	a.Router.HandleFunc("/register", a.registerHandler).Methods("POST", "GET")
-	a.Router.HandleFunc("/list", a.listHandler).Methods("GET")
-	a.Router.HandleFunc("/list/{srt:[0-9]+}", a.listHandler).Methods("GET")
-	a.Router.HandleFunc("/create", a.createHandler).Methods("POST", "GET")
-	a.Router.HandleFunc("/update", a.updateHandler).Methods("POST", "GET")
-	a.Router.HandleFunc("/delete", a.deleteHandler).Methods("POST", "GET")
-
-	log.Println("Routes established")
-	
-}
-
-func (a *App) Run(addr string) {
-	if addr != "" {
-		a.bindport = addr
-	}
-
+func (a *App) Run() {
 	// get the local IP that has Internet connectivity
 	ip := GetOutboundIP()
 
@@ -134,7 +124,7 @@ func (a *App) Run(addr string) {
 
 	// HTTP listener is in a goroutine as its blocking
 	go func() {
-		if err = srv.ListenAndServe(); err != nil {
+		if err := srv.ListenAndServe(); err != nil {
 			log.Println(err)
 		}
 	}()
@@ -144,6 +134,7 @@ func (a *App) Run(addr string) {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	<-c
+	
 	ctx, cancel := context.WithTimeout(context.Background(), wait)
 	defer cancel()
 	log.Println("shutting HTTP service down")
