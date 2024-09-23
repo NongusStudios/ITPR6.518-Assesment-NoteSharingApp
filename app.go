@@ -74,11 +74,12 @@ func initRouter(a *App) *mux.Router {
 
 	// Add handler functions
 	r.HandleFunc("/", a.indexHandler).Methods("GET")
+	r.HandleFunc("/login", a.loginHandler).Methods("POST", "GET")
+	r.HandleFunc("/register", a.registerHandler).Methods("POST", "GET")
+	r.HandleFunc("/dashboard", a.dashboardHandler).Methods("GET")
 
 	return r
 }
-
-
 
 func InitApp() (App, error) {
 	a := App{}
@@ -101,6 +102,7 @@ func InitApp() (App, error) {
 
 	log.Println("Successfully connected to PostgreSQL server")
 
+	setupAuth()
 	a.Router = initRouter(&a)
 
 	return a, nil

@@ -7,6 +7,12 @@ import (
 	"os"
 )
 
+type User struct {
+	id int
+	username string
+	password string
+}
+
 func execSqlScript(db *sql.DB, scriptPath string) (error) {
 	bytes, err := os.ReadFile(scriptPath)
 	if err != nil {
