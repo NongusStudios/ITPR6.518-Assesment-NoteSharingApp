@@ -82,6 +82,7 @@ func isUserDetailsValid(name, pass string) bool {
 		return false
 	}
 
+	return true
 }
 
 func (a *App) registerHandler(w http.ResponseWriter, r *http.Request) {
