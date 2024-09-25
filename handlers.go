@@ -41,8 +41,11 @@ func (a *App) dashboardHandler(w http.ResponseWriter, r *http.Request) {
 		user = sess.CAttr("username").(string)
 	}
 
-	executeTemplate(w, "dashboard", "web/dashboard.html", template.FuncMap{},
-					DashboardData{
-						Username: user,
-					})
+	tmplData := DashboardData{
+		Username: user,
+	}
+
+	executeTemplate(w, "dashboard.html", "web/dashboard.html",
+		template.FuncMap{},
+		tmplData)
 }

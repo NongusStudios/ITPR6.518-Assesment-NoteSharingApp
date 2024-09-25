@@ -2,7 +2,9 @@ package main
 
 import (
 	"database/sql"
+	"log"
 	"net/http"
+	"regexp"
 
 	"github.com/icza/session"
 	"golang.org/x/crypto/bcrypt"
@@ -52,14 +54,14 @@ func (a *App) loginHandler(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 
 	var user User
-	err := a.db.QueryRow("SELECT id, username, password FROM user WHERE username=$1",
-		                 username).Scan(&user.id, &user.username, &user.password);
-	
+	err := a.db.QueryRow("SELECT user_id, username, pass FROM users WHERE username=$1",
+		username).Scan(&user.id, &user.username, &user.password)
+
 	if err == sql.ErrNoRows {
 		http.Redirect(w, r, "/register", http.StatusMovedPermanently)
 		return
 	}
-	
+
 	checkInternalServerError(err, w)
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.password), []byte(password))
@@ -73,6 +75,14 @@ func (a *App) loginHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/dashboard", http.StatusMovedPermanently)
 }
 
+func isUserDetailsValid(name, pass string) bool {
+	// User name must contain no spaces
+	match, _ := regexp.MatchString("([^ ]+)", name)
+	if !match || len(name) > 255 {
+		return false
+	}
+
+}
 
 func (a *App) registerHandler(w http.ResponseWriter, r *http.Request) {
 	method := r.Method
@@ -84,16 +94,24 @@ func (a *App) registerHandler(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 
+	if !isUserDetailsValid(username, password) {
+		log.Println("Username or Password is not valid!")
+		http.Redirect(w, r, "/register", http.StatusMovedPermanently)
+		return
+	}
+
 	var user User
-	err := a.db.QueryRow("SELECT username, password FROM user WHERE username=$1", username).Scan(&user.username, &user.password)
+	err := a.db.QueryRow("SELECT username, pass FROM users WHERE username=$1", username).Scan(&user.username, &user.password)
 
 	switch {
 	case err == sql.ErrNoRows:
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 		checkInternalServerError(err, w)
 
-		_, err = a.db.Exec("INSERT INTO user(username, password) VALUES($1, $2)", username, hashedPassword)
+		_, err = a.db.Exec("INSERT INTO users(username, pass) VALUES($1, $2)", username, hashedPassword)
 		checkInternalServerError(err, w)
+
+		http.Redirect(w, r, "/login", http.StatusMovedPermanently)
 	case err != nil:
 		http.Error(w, "loi: "+err.Error(), http.StatusBadRequest)
 		return

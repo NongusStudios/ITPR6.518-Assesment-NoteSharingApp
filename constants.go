@@ -6,7 +6,7 @@ const (
 	dbPort     = 5432
 	dbUser     = "postgres"
 	dbPassword = "pp"
-	dbName     = "notedb"
+	dbName     = "postgres"
 	dbFileLock = "dbImported"
 )
 
