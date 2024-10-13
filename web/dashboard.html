@@ -1,7 +1,56 @@
 <!DOCTYPE html>
 
+<head>
+    <style>
+        table {
+            font-family: arial, sans-serif;
+            border-collapse: collapse;
+            width: 100%;
+        }
+        
+        td, th {
+            border: 1px solid #dddddd;
+            text-align: left;
+            padding: 8px;
+        }
+
+        tr:nth-child(even) {
+            background-color: #dddddd;
+        }   
+    </style>
+</head>
+
 <html>
     <main>
         <h1 style="text-align: center;">Logged in as {{.Username}}</h1>
+        <a href="/logout">Logout</a>
+
+        <form action="/create" method="post">
+            <label for="create-note-name">Note Name:</label>
+            <input type="text" id="create-note-name" name="create-note-name" required>
+            <br>
+            <label for="create-note-content">Note:</label>
+            <br>
+            <textarea id="create-note-content" name="create-note-content" rows="6" cols="50" required></textarea>
+            <br>
+            <input type="submit" value="Create Note">
+        </form>
+
+        <table>
+            <tr>
+                <th>ID</th>
+                <th>Note Name</th>
+                <th>Note Date</th>
+                <th>Note Content</th>
+            </tr>
+            {{range $index, $note := .Notes}}
+            <tr>
+                <th>{{addOne $index}}</th>
+                <th>{{$note.Name}}</th>
+                <th>{{$note.Date}}</th>
+                <th>{{$note.Content}}</th>
+            </tr>
+            {{end}}
+        </table>
     </main>
 </html>

@@ -14,7 +14,12 @@ VALUES('__placeholder__user__', '');
 DROP TABLE IF EXISTS "notes";
 CREATE TABLE "notes" (
     note_id SERIAL PRIMARY KEY NOT NULL,
-    noteName VARCHAR(255) NOT NULL,
-    noteDate DATE,
-    content TEXT
+    note_owner INT NOT NULL,
+    note_share VARCHAR(512) NOT NULL,
+    note_name VARCHAR(255) NOT NULL,
+    note_date DATE,
+    note_content TEXT
 );
+
+INSERT INTO notes(note_owner, note_share, note_name, note_date, note_content)
+VALUES(' ', 'global', 'Welcome', NOW(), 'Welcome to Enterprise Note Sharer enjoy your notes');

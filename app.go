@@ -48,13 +48,15 @@ func findBindPort() string {
 
 func connectToPostgreSQL() (*sql.DB, error) {
 	dbInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-						   dbHost, dbPort, dbUser, dbPassword, dbName)
+		dbHost, dbPort, dbUser, dbPassword, dbName)
 
 	log.Println(dbInfo)
 
 	db, err := sql.Open("pgx", dbInfo)
 
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 
 	// Test DB connection
 	err = db.Ping()
@@ -76,7 +78,11 @@ func initRouter(a *App) *mux.Router {
 	r.HandleFunc("/", a.indexHandler).Methods("GET")
 	r.HandleFunc("/login", a.loginHandler).Methods("POST", "GET")
 	r.HandleFunc("/register", a.registerHandler).Methods("POST", "GET")
+	r.HandleFunc("/logout", a.logoutHandler).Methods("GET")
 	r.HandleFunc("/dashboard", a.dashboardHandler).Methods("GET")
+
+	// Note handle
+	r.HandleFunc("/create", a.createNoteHandler).Methods("POST")
 
 	return r
 }
@@ -89,10 +95,12 @@ func InitApp() (App, error) {
 	log.Printf("Server using port %s\n", a.bindport)
 
 	log.Println("Attempting to establish connection to PostgreSQL server")
-	
+
 	var err error
 	a.db, err = connectToPostgreSQL()
-	if err != nil { return App{}, err }
+	if err != nil {
+		return App{}, err
+	}
 
 	// Check if tables imported
 	_, err = os.Stat(fmt.Sprintf("./%s", dbFileLock))
@@ -136,7 +144,7 @@ func (a *App) Run() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	<-c
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(), wait)
 	defer cancel()
 	log.Println("shutting HTTP service down")

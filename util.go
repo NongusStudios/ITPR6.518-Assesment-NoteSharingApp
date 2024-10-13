@@ -36,3 +36,37 @@ func GetOutboundIP() string {
 	localAddr := conn.LocalAddr().(*net.UDPAddr)
 	return localAddr.IP.String()
 }
+
+type ValidateRequire struct {
+	requiredChar []rune
+	amount       int
+}
+
+// returns false if a char in 'blacklist' is found in 's'
+// returns false if counted chars from 'require.requiredChar' is not equal to 'require.amount'
+func ValidateString(s string, blacklist []rune, requires []ValidateRequire) bool {
+	requireCounts := make([]int, len(requires))
+
+	for _, ch := range s {
+		for _, bl := range blacklist {
+			if ch == bl {
+				return false
+			}
+		}
+		for i := 0; i < len(requires); i++ {
+			for _, req := range requires[i].requiredChar {
+				if ch == req {
+					requireCounts[i]++
+				}
+			}
+		}
+	}
+
+	for i := 0; i < len(requires); i++ {
+		if requireCounts[i] < requires[i].amount {
+			return false
+		}
+	}
+
+	return true
+}

@@ -2,9 +2,9 @@ package main
 
 import (
 	"database/sql"
+	"html/template"
 	"log"
 	"net/http"
-	"regexp"
 
 	"github.com/icza/session"
 	"golang.org/x/crypto/bcrypt"
@@ -29,7 +29,7 @@ func isAuthenticated(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !authenticated {
-		http.Redirect(w, r, "/login", 301)
+		http.Redirect(w, r, "/login", http.StatusMovedPermanently)
 	}
 }
 
@@ -42,11 +42,19 @@ func setupAuth() {
 
 }
 
+type AuthData struct {
+	LogErrMsg string
+	RegErrMsg string
+}
+
+var authData AuthData = AuthData{LogErrMsg: "", RegErrMsg: ""}
+
 func (a *App) loginHandler(w http.ResponseWriter, r *http.Request) {
 	method := r.Method
 
 	if method != "POST" {
-		http.ServeFile(w, r, "web/login.html")
+		executeTemplate(w, "login.html", "web/login.html",
+			template.FuncMap{}, authData)
 		return
 	}
 
@@ -58,7 +66,8 @@ func (a *App) loginHandler(w http.ResponseWriter, r *http.Request) {
 		username).Scan(&user.id, &user.username, &user.password)
 
 	if err == sql.ErrNoRows {
-		http.Redirect(w, r, "/register", http.StatusMovedPermanently)
+		authData.LogErrMsg = "Incorrect Username"
+		http.Redirect(w, r, "/login", http.StatusMovedPermanently)
 		return
 	}
 
@@ -66,40 +75,56 @@ func (a *App) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.password), []byte(password))
 	if err != nil {
+		authData.LogErrMsg = "Incorrect Password"
 		http.Redirect(w, r, "/login", http.StatusMovedPermanently)
 		return
 	}
+
+	authData.LogErrMsg = ""
 
 	// Successful Login
 	createUserSession(w, user)
 	http.Redirect(w, r, "/dashboard", http.StatusMovedPermanently)
 }
 
-func isUserDetailsValid(name, pass string) bool {
-	// User name must contain no spaces
-	match, _ := regexp.MatchString("([^ ]+)", name)
-	if !match || len(name) > 255 {
-		return false
-	}
-
-	return true
-}
-
 func (a *App) registerHandler(w http.ResponseWriter, r *http.Request) {
 	method := r.Method
 
 	if method != "POST" {
-		http.ServeFile(w, r, "web/register.html")
+		executeTemplate(w, "register.html", "web/register.html",
+			template.FuncMap{}, authData)
+		return
 	}
 
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 
-	if !isUserDetailsValid(username, password) {
-		log.Println("Username or Password is not valid!")
+	// For dev purposes will be removed
+	if username == "dev" {
+		goto dev
+	}
+
+	// User name can't contain spaces. My reasoning is that sql statements require spaces so sql injection would be impossible
+	if !ValidateString(username, []rune{' '}, []ValidateRequire{}) {
+		authData.RegErrMsg = "Username can't contain spaces"
 		http.Redirect(w, r, "/register", http.StatusMovedPermanently)
 		return
 	}
+
+	if !ValidateString(password, []rune{' '} /* No spaces */, []ValidateRequire{
+		{amount: 2, requiredChar: []rune{'1', '2', '3', '4', '5', '6', '7', '8', '9', '0'}}, // Atleast 2 numbers
+		{amount: 1, requiredChar: []rune{'`', '~', '!', '@', '#', '$', '%', '^', '&', '*', // Atleast 1 special character
+			'(', ')', '-', '_', '+', '=', ':', ';', '"', '\'',
+			',', '<', '.', '>', '?', '/', '{', '}', '[', ']'}},
+	}) {
+		authData.RegErrMsg = "Password must contain no spaces, atleast two numbers, and atleast 1 special character (e.g. '@')"
+		http.Redirect(w, r, "/register", http.StatusMovedPermanently)
+		return
+	}
+
+dev:
+
+	authData.RegErrMsg = ""
 
 	var user User
 	err := a.db.QueryRow("SELECT username, pass FROM users WHERE username=$1", username).Scan(&user.username, &user.password)
@@ -119,4 +144,13 @@ func (a *App) registerHandler(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Redirect(w, r, "/login", http.StatusMovedPermanently)
 	}
+}
+
+func (a *App) logoutHandler(w http.ResponseWriter, r *http.Request) {
+	s := session.Get(r)
+	log.Printf("User %s", s.CAttr("username").(string))
+	session.Remove(s, w)
+	s = nil
+
+	http.Redirect(w, r, "/login", http.StatusMovedPermanently)
 }
