@@ -14,8 +14,8 @@ VALUES('__placeholder__user__', '');
 DROP TABLE IF EXISTS "notes";
 CREATE TABLE "notes" (
     note_id SERIAL PRIMARY KEY NOT NULL,
-    note_owner INT NOT NULL,
-    note_share VARCHAR(512) NOT NULL,
+    note_owner VARCHAR(255) NOT NULL,
+    note_share VARCHAR(512) NOT NULL, -- Comma seperated list of usernames, If set to global it is visible to all users
     note_name VARCHAR(255) NOT NULL,
     note_date DATE,
     note_content TEXT
