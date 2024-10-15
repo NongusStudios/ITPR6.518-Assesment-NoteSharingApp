@@ -5,15 +5,26 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
+
+	"github.com/lib/pq"
 )
 
 type User struct {
-	id int
-	username string
-	password string
+	Id       int32
+	Username string
+	Password string
 }
 
-func execSqlScript(db *sql.DB, scriptPath string) (error) {
+type Note struct {
+	Owner   int32
+	Share   pq.Int32Array
+	Name    string
+	Date    time.Time
+	Content string
+}
+
+func execSqlScript(db *sql.DB, scriptPath string) error {
 	bytes, err := os.ReadFile(scriptPath)
 	if err != nil {
 		return err
@@ -25,7 +36,7 @@ func execSqlScript(db *sql.DB, scriptPath string) (error) {
 	return err
 }
 
-func (a *App) importData(){
+func (a *App) importData() {
 	log.Printf("Creating Tables")
 
 	err := execSqlScript(a.db, "sqlScripts/createTables.sql")

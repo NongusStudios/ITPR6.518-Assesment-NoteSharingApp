@@ -4,25 +4,16 @@ import (
 	"database/sql"
 	"html/template"
 	"net/http"
-	"slices"
-	"strings"
+	"strconv"
 	"time"
 
 	"github.com/icza/session"
 )
 
 type DashboardData struct {
-	Username string
-	Users    []string
-	Notes    []Note
-}
-
-type Note struct {
-	Owner   string
-	Share   []string
-	Name    string
-	Date    time.Time
-	Content string
+	CurrentUser User
+	Users       []User
+	Notes       []Note
 }
 
 func executeTemplate(w http.ResponseWriter, name, path string, funcMap template.FuncMap, data any) {
@@ -34,7 +25,7 @@ func executeTemplate(w http.ResponseWriter, name, path string, funcMap template.
 
 func createUserSession(w http.ResponseWriter, user User) {
 	s := session.NewSessionOptions(&session.SessOptions{
-		CAttrs: map[string]interface{}{"username": user.username, "userid": user.id},
+		CAttrs: map[string]interface{}{"username": user.Username, "userid": user.Id},
 		Attrs:  map[string]interface{}{"count": 1},
 	})
 	session.Add(s, w)
@@ -62,19 +53,18 @@ func (a *App) fetchNotes() ([]Note, error) {
 
 	notes := make([]Note, 0, noteCount)
 
-	rows, err = a.db.Query("SELECT note_owner, note_share, note_name, note_date, note_content FROM notes")
+	rows, err = a.db.Query("SELECT note_owner, note_share, note_name, note_date, note_content FROM notes ORDER BY note_id DESC")
 	if err != nil {
 		return make([]Note, 0), err
 	}
 
 	for rows.Next() {
 		note := Note{}
-		noteShare := ""
-		if e := rows.Scan(&note.Owner, &noteShare, &note.Name, &note.Date, &note.Content); e != nil {
-			return notes, err
+
+		if e := rows.Scan(&note.Owner, &note.Share, &note.Name, &note.Date, &note.Content); e != nil {
+			return notes, e
 		}
 
-		note.Share = strings.Split(noteShare, ",")
 		notes = append(notes, note)
 	}
 
@@ -82,58 +72,79 @@ func (a *App) fetchNotes() ([]Note, error) {
 }
 
 // Returns slice of notes that user has access to
-func filterNotesByUser(user string, notes []Note) []Note {
+func getAccessibleNotes(user User, notes []Note) []Note {
 	filteredNotes := make([]Note, 0, len(notes))
 	for _, note := range notes {
-		if slices.IndexFunc(note.Share, func(u string) bool { return u == user || u == "global" }) != -1 || note.Owner == user {
+		if len(note.Share) == 0 {
 			filteredNotes = append(filteredNotes, note)
+		}
+
+		for _, share_id := range note.Share {
+			if share_id == user.Id || note.Owner == user.Id {
+				filteredNotes = append(filteredNotes, note)
+				break
+			}
 		}
 	}
 	return filteredNotes
 }
 
-func (a *App) fetchUsernamesExclude(exclude string) ([]string, error) {
-	rows, err := a.db.Query("SELECT username FROM users WHERE username!=$1 AND username!='__placeholder__user__'", exclude)
-	if err != nil {
-		return make([]string, 0), err
+func (a *App) fetchCurrentUser(r *http.Request) (User, error) {
+	sess := session.Get(r)
+	name := "[guest]"
+
+	if sess != nil {
+		name = sess.CAttr("username").(string)
 	}
 
-	usernames := []string{}
+	var user User
+	err := a.db.QueryRow("SELECT user_id, username, pass FROM users WHERE username=$1", name).Scan(&user.Id, &user.Username, &user.Password)
+	if err != nil {
+		return User{}, err
+	}
+
+	return user, nil
+}
+
+// exclude - exclude this user from list
+func (a *App) fetchUsersExclude(exclude User) ([]User, error) {
+	rows, err := a.db.Query("SELECT user_id, username, pass FROM users WHERE username!=$1 AND username!='__placeholder__user__'", exclude.Username)
+	if err != nil {
+		return make([]User, 0), err
+	}
+
+	users := []User{}
 	for rows.Next() {
-		name := ""
-		if e := rows.Scan(&name); e != nil {
-			return make([]string, 0), err
+		var user User
+		if e := rows.Scan(&user.Id, &user.Username, &user.Password); e != nil {
+			return make([]User, 0), err
 		}
 
-		usernames = append(usernames, name)
+		users = append(users, user)
 	}
 
-	return usernames, nil
+	return users, nil
 }
 
 func (a *App) dashboardHandler(w http.ResponseWriter, r *http.Request) {
 	isAuthenticated(w, r)
 
-	sess := session.Get(r)
-	user := "[guest]"
-
-	if sess != nil {
-		user = sess.CAttr("username").(string)
-	}
-
-	notes, err := a.fetchNotes()
-	notes = filterNotesByUser(user, notes)
-
+	user, err := a.fetchCurrentUser(r)
 	checkInternalServerError(err, w)
 
-	otherUsers, err := a.fetchUsernamesExclude(user)
+	notes, err := a.fetchNotes()
+	checkInternalServerError(err, w)
+
+	notes = getAccessibleNotes(user, notes)
+
+	otherUsers, err := a.fetchUsersExclude(user)
 
 	checkInternalServerError(err, w)
 
 	tmplData := DashboardData{
-		Username: user,
-		Users:    otherUsers,
-		Notes:    notes,
+		CurrentUser: user,
+		Users:       otherUsers,
+		Notes:       notes,
 	}
 
 	executeTemplate(w, "dashboard.html", "web/dashboard.html",
@@ -141,44 +152,47 @@ func (a *App) dashboardHandler(w http.ResponseWriter, r *http.Request) {
 			"addOne": func(n int) int {
 				return n + 1
 			},
+			"getUserName": func(id int32) string {
+				name := ""
+				err := a.db.QueryRow("SELECT username FROM users WHERE user_id=$1", id).Scan(&name)
+				checkInternalServerError(err, w)
+
+				if name == "__placeholder__user__" {
+					return ""
+				}
+
+				return name
+			},
+			"shortDate": func(date time.Time) string {
+				return date.Format("02/01/2006")
+			},
 		},
 		tmplData)
-}
-
-func (a *App) getUserIDfromUsername(name string) (int, error) {
-	id := 0
-	err := a.db.QueryRow("SELECT user_id, username FROM users WHERE username=$1", name).Scan(&id)
-	if err != nil {
-		return 0, err
-	}
-
-	return id, nil
 }
 
 func (a *App) createNoteHandler(w http.ResponseWriter, r *http.Request) {
 	isAuthenticated(w, r)
 
-	sess := session.Get(r)
-	user := "[guest]"
-
-	if sess != nil {
-		user = sess.CAttr("username").(string)
-	}
+	user, err := a.fetchCurrentUser(r)
+	checkInternalServerError(err, w)
 
 	noteName := r.FormValue("create-note-name")
 	noteContent := r.FormValue("create-note-content")
 
-	otherUsers, err := a.fetchUsernamesExclude(user)
+	otherUsers, err := a.fetchUsersExclude(user)
 	checkInternalServerError(err, w)
 
-	var shareSb strings.Builder
+	var share []int
 
 	for _, u := range otherUsers {
-		shareToUser := r.FormValue(u)
-		if shareToUser == u {
-			shareSb.WriteString(",")
-			shareSb.WriteString(u)
+		shareFormValueStr := r.FormValue(u.Username)
+		if shareFormValueStr != "" {
+			shareFormValue, err := strconv.Atoi(shareFormValueStr)
+			checkInternalServerError(err, w)
+
+			share = append(share, shareFormValue)
 		}
+
 	}
 
 	var note Note
@@ -187,7 +201,7 @@ func (a *App) createNoteHandler(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case err == sql.ErrNoRows:
 		_, err = a.db.Exec("INSERT INTO notes(note_owner, note_share, note_name, note_date, note_content) VALUES($1, $2, $3, $4, $5)",
-			user, shareSb.String(), noteName, time.Now(), noteContent)
+			user.Id, share, noteName, time.Now(), noteContent)
 		checkInternalServerError(err, w)
 		http.Redirect(w, r, "/dashboard", http.StatusMovedPermanently)
 	case err != nil:

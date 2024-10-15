@@ -1,4 +1,6 @@
+DROP TABLE IF EXISTS "notes";
 DROP TABLE IF EXISTS "users";
+
 CREATE TABLE "users" (
     user_id SERIAL PRIMARY KEY NOT NULL,
     username VARCHAR(255) NOT NULL, 
@@ -11,15 +13,17 @@ CREATE TABLE "users" (
 INSERT INTO users(username, pass)
 VALUES('__placeholder__user__', '');
 
-DROP TABLE IF EXISTS "notes";
 CREATE TABLE "notes" (
     note_id SERIAL PRIMARY KEY NOT NULL,
-    note_owner VARCHAR(255) NOT NULL,
-    note_share VARCHAR(512) NOT NULL, -- Comma seperated list of usernames, If set to global it is visible to all users
+    note_owner INTEGER NOT NULL,
+    note_share INTEGER[], -- Comma seperated list of usernames, If set to global it is visible to all users
     note_name VARCHAR(255) NOT NULL,
     note_date DATE,
-    note_content TEXT
+    note_content TEXT,
+    CONSTRAINT fk_note_owner
+        FOREIGN KEY(note_owner)
+            REFERENCES users(user_id)
 );
 
 INSERT INTO notes(note_owner, note_share, note_name, note_date, note_content)
-VALUES(' ', 'global', 'Welcome', NOW(), 'Welcome to Enterprise Note Sharer enjoy your notes');
+VALUES(1, {}, 'Welcome', NOW(), 'Welcome to Enterprise Note Sharer enjoy your notes');

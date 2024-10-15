@@ -63,7 +63,7 @@ func (a *App) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	var user User
 	err := a.db.QueryRow("SELECT user_id, username, pass FROM users WHERE username=$1",
-		username).Scan(&user.id, &user.username, &user.password)
+		username).Scan(&user.Id, &user.Username, &user.Password)
 
 	if err == sql.ErrNoRows {
 		authData.LogErrMsg = "Incorrect Username"
@@ -73,7 +73,7 @@ func (a *App) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	checkInternalServerError(err, w)
 
-	err = bcrypt.CompareHashAndPassword([]byte(user.password), []byte(password))
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
 	if err != nil {
 		authData.LogErrMsg = "Incorrect Password"
 		http.Redirect(w, r, "/login", http.StatusMovedPermanently)
@@ -127,7 +127,7 @@ dev:
 	authData.RegErrMsg = ""
 
 	var user User
-	err := a.db.QueryRow("SELECT username, pass FROM users WHERE username=$1", username).Scan(&user.username, &user.password)
+	err := a.db.QueryRow("SELECT user_id, username, pass FROM users WHERE username=$1", username).Scan(&user.Id, &user.Username, &user.Password)
 
 	switch {
 	case err == sql.ErrNoRows:
