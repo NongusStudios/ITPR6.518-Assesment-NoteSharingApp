@@ -166,8 +166,31 @@ func (a *App) dashboardHandler(w http.ResponseWriter, r *http.Request) {
 			"shortDate": func(date time.Time) string {
 				return date.Format("02/01/2006")
 			},
+			"isNoteOwned": func(note Note) bool {
+				return note.Owner == user.Id
+			},
 		},
 		tmplData)
+}
+
+func getShareDetails(formIdPrefix string, otherUsers []User, w http.ResponseWriter, r *http.Request) []int {
+	var share []int
+
+	for _, u := range otherUsers {
+		shareFormValueStr := r.FormValue(formIdPrefix + "-" + u.Username)
+		if shareFormValueStr != "" {
+			shareFormValue, err := strconv.Atoi(shareFormValueStr)
+			checkInternalServerError(err, w)
+
+			share = append(share, shareFormValue)
+		}
+	}
+
+	if len(share) == 0 {
+		share = append(share, -1)
+	}
+
+	return share
 }
 
 func (a *App) createNoteHandler(w http.ResponseWriter, r *http.Request) {
@@ -182,18 +205,7 @@ func (a *App) createNoteHandler(w http.ResponseWriter, r *http.Request) {
 	otherUsers, err := a.fetchUsersExclude(user)
 	checkInternalServerError(err, w)
 
-	var share []int
-
-	for _, u := range otherUsers {
-		shareFormValueStr := r.FormValue(u.Username)
-		if shareFormValueStr != "" {
-			shareFormValue, err := strconv.Atoi(shareFormValueStr)
-			checkInternalServerError(err, w)
-
-			share = append(share, shareFormValue)
-		}
-
-	}
+	share := getShareDetails("create", otherUsers, w, r)
 
 	var note Note
 	err = a.db.QueryRow("SELECT note_name FROM notes WHERE note_name=$1", noteName).Scan(&note.Name)
@@ -208,6 +220,62 @@ func (a *App) createNoteHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "loi: "+err.Error(), http.StatusBadRequest)
 		return
 	default:
+		http.Redirect(w, r, "/dashboard", http.StatusMovedPermanently)
+	}
+}
+
+func (a *App) editNoteHandler(w http.ResponseWriter, r *http.Request) {
+	isAuthenticated(w, r)
+
+	user, err := a.fetchCurrentUser(r)
+	checkInternalServerError(err, w)
+
+	noteToEdit := r.FormValue("edit-select-note")
+	editedName := r.FormValue("edit-note-name")
+	editedContent := r.FormValue("edit-note-content")
+
+	otherUsers, err := a.fetchUsersExclude(user)
+	checkInternalServerError(err, w)
+
+	editedShare := getShareDetails("edit", otherUsers, w, r)
+
+	var note Note
+	err = a.db.QueryRow("SELECT note_name FROM notes WHERE note_name=$1", noteToEdit).Scan(&note.Name)
+
+	switch {
+	case err == sql.ErrNoRows:
+		http.Redirect(w, r, "/dashboard", http.StatusMovedPermanently)
+	case err != nil:
+		http.Error(w, "loi: "+err.Error(), http.StatusBadRequest)
+		return
+	default:
+		_, err = a.db.Exec("UPDATE notes SET note_share=$1, note_name=$2, note_content=$3 WHERE note_name=$4",
+			editedShare, editedName, editedContent, noteToEdit)
+		checkInternalServerError(err, w)
+		http.Redirect(w, r, "/dashboard", http.StatusMovedPermanently)
+	}
+}
+
+func (a *App) deleteNoteHandler(w http.ResponseWriter, r *http.Request) {
+	isAuthenticated(w, r)
+
+	user, err := a.fetchCurrentUser(r)
+	checkInternalServerError(err, w)
+
+	noteToDelete := r.FormValue("delete-select-note")
+
+	var note Note
+	err = a.db.QueryRow("SELECT note_name FROM notes WHERE note_name=$1", noteToDelete).Scan(&note.Name)
+
+	switch {
+	case err == sql.ErrNoRows:
+		http.Redirect(w, r, "/dashboard", http.StatusMovedPermanently)
+	case err != nil:
+		http.Error(w, "loi: "+err.Error(), http.StatusBadRequest)
+		return
+	default:
+		_, err = a.db.Exec("DELETE FROM notes WHERE note_name=$1 AND note_owner=$2", noteToDelete, user.Id)
+		checkInternalServerError(err, w)
 		http.Redirect(w, r, "/dashboard", http.StatusMovedPermanently)
 	}
 }

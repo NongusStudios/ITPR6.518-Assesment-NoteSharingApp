@@ -26,4 +26,4 @@ CREATE TABLE "notes" (
 );
 
 INSERT INTO notes(note_owner, note_share, note_name, note_date, note_content)
-VALUES(1, {}, 'Welcome', NOW(), 'Welcome to Enterprise Note Sharer enjoy your notes');
+VALUES(1, ARRAY[]::INTEGER[], 'Welcome', NOW(), 'Welcome to Enterprise Note Sharer enjoy your notes');

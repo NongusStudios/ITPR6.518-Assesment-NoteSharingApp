@@ -70,8 +70,8 @@
         <a href="/logout">Logout</a><br>
 
         <button id="open-create">Create</button>
-        <button>Edit</button>
-        <button>Delete</button>        
+        <button id="open-edit">Edit</button>
+        <button id="open-delete">Delete</button>        
 
         <table>
             <tr>
@@ -107,8 +107,8 @@
                     <fieldset>
                         <legend>Share note with:</legend>
                     {{range $index, $user := .Users}}
-                        <input type="checkbox" id={{$user.Username}} name={{$user.Username}} value={{$user.Id}}>
-                        <label for={{$user.Username}}>{{$user.Username}}</label><br>
+                        <input type="checkbox" id=create-{{$user.Username}} name=create-{{$user.Username}} value={{$user.Id}}>
+                        <label for=create-{{$user.Username}}>{{$user.Username}}</label><br>
                     {{end}}
                     </fieldset>
                     <br>
@@ -122,7 +122,36 @@
             <div class="modal-content">
                 <span id="close-edit" class="close">&times;</span>
 
-                
+                <form action="/edit" method="post">
+                    <label for="edit-select-note">Note:</label>
+                    <select name="edit-select-note" id="select-note">
+                        {{range $index, $note := .Notes}}
+                            {{if isNoteOwned $note}}
+                                <option value={{$note.Name}}>{{$note.Name}}</option>
+                            {{end}}
+                        {{end}}
+                    </select>
+
+                    <br>
+
+                    <label for="edit-note-name">Edit Name:</label>
+                    <input type="text" name="edit-note-name" id="edit-note-name" required>
+
+                    <br>
+
+                    <label for="edit-note-content">Edit Note:</label>
+                    <br>
+                    <textarea id="edit-note-content" name="edit-note-content" rows="6" cols="50" required></textarea>
+                    <fieldset>
+                        <legend>Edit Share:</legend>
+                        {{range $index, $user := .Users}}
+                            <input type="checkbox" id=edit-{{$user.Username}} name=edit-{{$user.Username}} value={{$user.Id}}>
+                            <label for=edit-{{$user.Username}}>{{$user.Username}}</label><br>
+                        {{end}}
+                    </fieldset>
+                    <br>
+                    <input type="submit" value="Edit Note">
+                </form>
             </div>
         </div>
 
@@ -130,7 +159,18 @@
         <div id="delete-modal" class="modal">
             <div class="modal-content">
                 <span id="close-delete" class="close">&times;</span>
-
+                <form action="/delete" method="post">
+                    <label for="delete-select-note">Note:</label>
+                    <select name="delete-select-note" id="select-note">
+                        {{range $index, $note := .Notes}}
+                            {{if isNoteOwned $note}}
+                                <option value={{$note.Name}}>{{$note.Name}}</option>
+                            {{end}}
+                        {{end}}
+                    </select>
+                    <br>
+                    <input type="submit" value="Delete Note">
+                </form>
             </div>
         </div>
 
@@ -138,23 +178,51 @@
             var createModal = document.getElementById("create-modal");
             var openCreateBtn = document.getElementById("open-create");
             var closeCreateBtn = document.getElementById("close-create");
+
+            var editModal = document.getElementById("edit-modal");
+            var openEditBtn = document.getElementById("open-edit");
+            var closeEditBtn = document.getElementById("close-edit");
+
+            var deleteModal = document.getElementById("delete-modal");
+            var openDeleteBtn = document.getElementById("open-delete");
+            var closeDeleteBtn = document.getElementById("close-delete");
         
             openCreateBtn.onclick = function() {
                 createModal.style.display = "block";
+            }
+
+            openEditBtn.onclick = function() {
+                editModal.style.display = "block";
+            }
+
+            openDeleteBtn.onclick = function() {
+                deleteModal.style.display = "block";
             }
         
             // When the user clicks on <span> (x), close the modal
             closeCreateBtn.onclick = function() {
                 createModal.style.display = "none";
             }
+
+            closeEditBtn.onclick = function() {
+                editModal.style.display = "none";
+            }
+
+            closeDeleteBtn.onclick = function() {
+                deleteModal.style.display = "none";
+            }
         
             // When the user clicks anywhere outside of the modal, close it
             window.onclick = function(event) {
                 if (event.target == createModal) {
                     createModal.style.display = "none";
+                } else if (event.target == editModal){
+                    editModal.style.display = "none";
+                } else if (event.target == deleteModal){
+                    deleteModal.style.display = "none";
                 }
             }
-        
+            
         </script>
 
     </body>

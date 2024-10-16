@@ -83,6 +83,8 @@ func initRouter(a *App) *mux.Router {
 
 	// Note handle
 	r.HandleFunc("/create", a.createNoteHandler).Methods("POST")
+	r.HandleFunc("/edit", a.editNoteHandler).Methods("POST")
+	r.HandleFunc("/delete", a.deleteNoteHandler).Methods("POST")
 
 	return r
 }
