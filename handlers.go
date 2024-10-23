@@ -53,7 +53,7 @@ func (a *App) fetchNotes() ([]Note, error) {
 
 	notes := make([]Note, 0, noteCount)
 
-	rows, err = a.db.Query("SELECT note_owner, note_share, note_name, note_date, note_content FROM notes ORDER BY note_id DESC")
+	rows, err = a.db.Query("SELECT note_owner, note_share, note_name, note_date, note_flag, note_content FROM notes ORDER BY note_id DESC")
 	if err != nil {
 		return make([]Note, 0), err
 	}
@@ -61,7 +61,7 @@ func (a *App) fetchNotes() ([]Note, error) {
 	for rows.Next() {
 		note := Note{}
 
-		if e := rows.Scan(&note.Owner, &note.Share, &note.Name, &note.Date, &note.Content); e != nil {
+		if e := rows.Scan(&note.Owner, &note.Share, &note.Name, &note.Date, &note.Flag, &note.Content); e != nil {
 			return notes, e
 		}
 
@@ -169,6 +169,15 @@ func (a *App) dashboardHandler(w http.ResponseWriter, r *http.Request) {
 			"isNoteOwned": func(note Note) bool {
 				return note.Owner == user.Id
 			},
+			"noteFlagToString": func(noteFlag int) string {
+				return []string{
+					"Note",
+					"In Progress",
+					"Completed",
+					"Cancelled",
+					"Delegated",
+				}[noteFlag]
+			},
 		},
 		tmplData)
 }
@@ -201,6 +210,7 @@ func (a *App) createNoteHandler(w http.ResponseWriter, r *http.Request) {
 
 	noteName := r.FormValue("create-note-name")
 	noteContent := r.FormValue("create-note-content")
+	noteFlag, _ := strconv.Atoi(r.FormValue("create-note-flags"))
 
 	otherUsers, err := a.fetchUsersExclude(user)
 	checkInternalServerError(err, w)
@@ -212,8 +222,8 @@ func (a *App) createNoteHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch {
 	case err == sql.ErrNoRows:
-		_, err = a.db.Exec("INSERT INTO notes(note_owner, note_share, note_name, note_date, note_content) VALUES($1, $2, $3, $4, $5)",
-			user.Id, share, noteName, time.Now(), noteContent)
+		_, err = a.db.Exec("INSERT INTO notes(note_owner, note_share, note_name, note_date, note_flag, note_content) VALUES($1, $2, $3, $4, $5, $6)",
+			user.Id, share, noteName, time.Now(), noteFlag, noteContent)
 		checkInternalServerError(err, w)
 		http.Redirect(w, r, "/dashboard", http.StatusMovedPermanently)
 	case err != nil:
@@ -233,6 +243,7 @@ func (a *App) editNoteHandler(w http.ResponseWriter, r *http.Request) {
 	noteToEdit := r.FormValue("edit-select-note")
 	editedName := r.FormValue("edit-note-name")
 	editedContent := r.FormValue("edit-note-content")
+	editedFlag, _ := strconv.Atoi(r.FormValue("edit-note-flag"))
 
 	otherUsers, err := a.fetchUsersExclude(user)
 	checkInternalServerError(err, w)
@@ -249,8 +260,8 @@ func (a *App) editNoteHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "loi: "+err.Error(), http.StatusBadRequest)
 		return
 	default:
-		_, err = a.db.Exec("UPDATE notes SET note_share=$1, note_name=$2, note_content=$3 WHERE note_name=$4",
-			editedShare, editedName, editedContent, noteToEdit)
+		_, err = a.db.Exec("UPDATE notes SET note_share=$1, note_name=$2, note_flag=$3 note_content=$4 WHERE note_name=$5",
+			editedShare, editedName, editedFlag, editedContent, noteToEdit)
 		checkInternalServerError(err, w)
 		http.Redirect(w, r, "/dashboard", http.StatusMovedPermanently)
 	}

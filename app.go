@@ -70,9 +70,9 @@ func connectToPostgreSQL() (*sql.DB, error) {
 func initRouter(a *App) *mux.Router {
 	r := mux.NewRouter()
 
-	staticFileDirectory := http.Dir("./staticResources/")
-	staticFileHandler := http.StripPrefix("/staticResources/", http.FileServer(staticFileDirectory))
-	r.PathPrefix("/staticResources/").Handler(staticFileHandler).Methods("GET")
+	staticFileDirectory := http.Dir("./statics/")
+	staticFileHandler := http.StripPrefix("/statics/", http.FileServer(staticFileDirectory))
+	r.PathPrefix("/statics/").Handler(staticFileHandler).Methods("GET")
 
 	// Add handler functions
 	r.HandleFunc("/", a.indexHandler).Methods("GET")

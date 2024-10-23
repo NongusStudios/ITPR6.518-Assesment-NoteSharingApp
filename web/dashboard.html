@@ -1,230 +1,188 @@
 <!DOCTYPE html>
 
 <head>
-    <style>
-        table {
-            font-family: arial, sans-serif;
-            border-collapse: collapse;
-            width: 100%;
-        }
-        
-        td, th {
-            border: 1px solid #dddddd;
-            text-align: left;
-            padding: 8px;
-            text-wrap: auto;
-        }
-
-        tr:nth-child(even) {
-            background-color: #dddddd;
-        }
-
-        fieldset {
-            width: 25%;
-            text-wrap: auto;
-        }
-
-        /* The Modal (background) */
-        .modal {
-            display: none; /* Hidden by default */
-            position: fixed; /* Stay in place */
-            z-index: 1; /* Sit on top */
-            left: 0;
-            top: 0;
-            width: 100%; /* Full width */
-            height: 100%; /* Full height */
-            overflow: auto; /* Enable scroll if needed */
-            background-color: rgb(0,0,0); /* Fallback color */
-            background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
-        }
-        
-        /* Modal Content/Box */
-        .modal-content {
-            background-color: #fefefe;
-            margin: 15% auto; /* 15% from the top and centered */
-            padding: 20px;
-            border: 1px solid #888;
-            width: 80%; /* Could be more or less, depending on screen size */
-        }
-        
-        /* The Close Button */
-        .close {
-            color: #aaa;
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
-        }
-        
-        .close:hover,
-        .close:focus {
-            color: black;
-            text-decoration: none;
-            cursor: pointer;
-        }
-    </style>
+    <link rel="stylesheet" href="/statics/style.css">
 </head>
 
-<html>
-    <body>
-        <h1 style="text-align: center;">Logged in as {{.CurrentUser.Username}}</h1>
-        <a href="/logout">Logout</a><br>
+<body>
+    <h1 style="text-align: center;">Logged in as {{.CurrentUser.Username}}</h1>
+    <a href="/logout">Logout</a><br>
 
-        <button id="open-create">Create</button>
-        <button id="open-edit">Edit</button>
-        <button id="open-delete">Delete</button>        
+    <button id="open-create">Create</button>
+    <button id="open-edit">Edit</button>
+    <button id="open-delete">Delete</button>        
 
-        <table>
-            <tr>
-                <th>ID</th>
-                <th>Owner</th>
-                <th>Note Name</th>
-                <th>Note Date</th>
-                <th>Note Content</th>
-            </tr>
-            {{range $index, $note := .Notes}}
-            <tr>
-                <th>{{addOne $index}}</th>
-                <th>{{getUserName $note.Owner}}</th>
-                <th>{{$note.Name}}</th>
-                <th>{{shortDate $note.Date}}</th>
-                <th>{{$note.Content}}</th>
-            </tr>
-            {{end}}
-        </table>
+    <table>
+        <tr>
+            <th>ID</th>
+            <th>Owner</th>
+            <th>Note Name</th>
+            <th>Note Date</th>
+            <th>Note Status</th>
+            <th>Note Content</th>
+        </tr>
+        {{range $index, $note := .Notes}}
+        <tr>
+            <th>{{addOne $index}}</th>
+            <th>{{getUserName $note.Owner}}</th>
+            <th>{{$note.Name}}</th>
+            <th>{{shortDate $note.Date}}</th>
+            <th>{{noteFlagToString $note.Flag}}</th>
+            <th>{{$note.Content}}</th>
+        </tr>
+        {{end}}
+    </table>
 
-        <div id="create-modal" class="modal">
-            <div class="modal-content">
-                <span id="close-create" class="close">&times;</span>
+    <div id="create-modal" class="modal">
+        <div class="modal-content">
+            <span id="close-create" class="close">&times;</span>
 
-                <!-- Create Note Form -->
-                <form action="/create" method="post">
-                    <label for="create-note-name">Note Name:</label>
-                    <input type="text" id="create-note-name" name="create-note-name" required>
-                    <br>
-                    <label for="create-note-content">Note:</label>
-                    <br>
-                    <textarea id="create-note-content" name="create-note-content" rows="6" cols="50" required></textarea>
-                    <fieldset>
-                        <legend>Share note with:</legend>
-                    {{range $index, $user := .Users}}
-                        <input type="checkbox" id=create-{{$user.Username}} name=create-{{$user.Username}} value={{$user.Id}}>
-                        <label for=create-{{$user.Username}}>{{$user.Username}}</label><br>
+            <!-- Create Note Form -->
+            <form action="/create" method="post">
+                <label for="create-note-name">Note Name:</label>
+                <input type="text" id="create-note-name" name="create-note-name" required>
+                <br>
+                <label for="create-note-content">Note:</label>
+                <br>
+                <textarea id="create-note-content" name="create-note-content" rows="6" cols="50" required></textarea>
+                <br>
+                <label for="create-note-flags">Note Status:</label>
+                <select id="create-note-flags" name="create-note-flags" required>
+                    <option value="0">Note</option>
+                    <option value="1">In Progress</option>
+                    <option value="2">Completed</option>
+                    <option value="3">Cancelled</option>
+                    <option value="4">Delegated</option>
+                </select>
+                <fieldset>
+                    <legend>Share note with:</legend>
+                {{range $index, $user := .Users}}
+                    <input type="checkbox" id=create-{{$user.Username}} name=create-{{$user.Username}} value={{$user.Id}}>
+                    <label for=create-{{$user.Username}}>{{$user.Username}}</label><br>
+                {{end}}
+                </fieldset>
+                <br>
+                <input type="submit" value="Create Note">
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Note Form -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <span id="close-edit" class="close">&times;</span>
+
+            <form action="/edit" method="post">
+                <label for="edit-select-note">Note:</label>
+                <select name="edit-select-note" id="select-note">
+                    {{range $index, $note := .Notes}}
+                        {{if isNoteOwned $note}}
+                            <option value={{$note.Name}}>{{$note.Name}}</option>
+                        {{end}}
                     {{end}}
-                    </fieldset>
-                    <br>
-                    <input type="submit" value="Create Note">
-                </form>
-            </div>
+                </select>
+
+                <br>
+
+                <label for="edit-note-name">Edit Name:</label>
+                <input type="text" name="edit-note-name" id="edit-note-name" required>
+
+                <br>
+
+                <label for="edit-note-content">Edit Note:</label>
+                <br>
+                <textarea id="edit-note-content" name="edit-note-content" rows="6" cols="50" required></textarea>
+                <br>
+                <label for="edit-note-flags">Note Status:</label>
+                <select id="edit-note-flags" name="edit-note-flags" required>
+                    <option value="0">Note</option>
+                    <option value="1">In Progress</option>
+                    <option value="2">Completed</option>
+                    <option value="3">Cancelled</option>
+                    <option value="4">Delegated</option>
+                </select>
+                <fieldset>
+                    <legend>Edit Share:</legend>
+                    {{range $index, $user := .Users}}
+                        <input type="checkbox" id=edit-{{$user.Username}} name=edit-{{$user.Username}} value={{$user.Id}}>
+                        <label for=edit-{{$user.Username}}>{{$user.Username}}</label><br>
+                    {{end}}
+                </fieldset>
+                <br>
+                <input type="submit" value="Edit Note">
+            </form>
         </div>
+    </div>
 
-        <!-- Edit Note Form -->
-        <div id="edit-modal" class="modal">
-            <div class="modal-content">
-                <span id="close-edit" class="close">&times;</span>
-
-                <form action="/edit" method="post">
-                    <label for="edit-select-note">Note:</label>
-                    <select name="edit-select-note" id="select-note">
-                        {{range $index, $note := .Notes}}
-                            {{if isNoteOwned $note}}
-                                <option value={{$note.Name}}>{{$note.Name}}</option>
-                            {{end}}
+    <!-- Delete Note Form -->
+    <div id="delete-modal" class="modal">
+        <div class="modal-content">
+            <span id="close-delete" class="close">&times;</span>
+            <form action="/delete" method="post">
+                <label for="delete-select-note">Note:</label>
+                <select name="delete-select-note" id="select-note">
+                    {{range $index, $note := .Notes}}
+                        {{if isNoteOwned $note}}
+                            <option value={{$note.Name}}>{{$note.Name}}</option>
                         {{end}}
-                    </select>
-
-                    <br>
-
-                    <label for="edit-note-name">Edit Name:</label>
-                    <input type="text" name="edit-note-name" id="edit-note-name" required>
-
-                    <br>
-
-                    <label for="edit-note-content">Edit Note:</label>
-                    <br>
-                    <textarea id="edit-note-content" name="edit-note-content" rows="6" cols="50" required></textarea>
-                    <fieldset>
-                        <legend>Edit Share:</legend>
-                        {{range $index, $user := .Users}}
-                            <input type="checkbox" id=edit-{{$user.Username}} name=edit-{{$user.Username}} value={{$user.Id}}>
-                            <label for=edit-{{$user.Username}}>{{$user.Username}}</label><br>
-                        {{end}}
-                    </fieldset>
-                    <br>
-                    <input type="submit" value="Edit Note">
-                </form>
-            </div>
+                    {{end}}
+                </select>
+                <br>
+                <input type="submit" value="Delete Note">
+            </form>
         </div>
+    </div>
 
-        <!-- Delete Note Form -->
-        <div id="delete-modal" class="modal">
-            <div class="modal-content">
-                <span id="close-delete" class="close">&times;</span>
-                <form action="/delete" method="post">
-                    <label for="delete-select-note">Note:</label>
-                    <select name="delete-select-note" id="select-note">
-                        {{range $index, $note := .Notes}}
-                            {{if isNoteOwned $note}}
-                                <option value={{$note.Name}}>{{$note.Name}}</option>
-                            {{end}}
-                        {{end}}
-                    </select>
-                    <br>
-                    <input type="submit" value="Delete Note">
-                </form>
-            </div>
-        </div>
+    <script>
+        var createModal = document.getElementById("create-modal");
+        var openCreateBtn = document.getElementById("open-create");
+        var closeCreateBtn = document.getElementById("close-create");
 
-        <script>
-            var createModal = document.getElementById("create-modal");
-            var openCreateBtn = document.getElementById("open-create");
-            var closeCreateBtn = document.getElementById("close-create");
+        var editModal = document.getElementById("edit-modal");
+        var openEditBtn = document.getElementById("open-edit");
+        var closeEditBtn = document.getElementById("close-edit");
 
-            var editModal = document.getElementById("edit-modal");
-            var openEditBtn = document.getElementById("open-edit");
-            var closeEditBtn = document.getElementById("close-edit");
+        var deleteModal = document.getElementById("delete-modal");
+        var openDeleteBtn = document.getElementById("open-delete");
+        var closeDeleteBtn = document.getElementById("close-delete");
+    
+        openCreateBtn.onclick = function() {
+            createModal.style.display = "block";
+        }
 
-            var deleteModal = document.getElementById("delete-modal");
-            var openDeleteBtn = document.getElementById("open-delete");
-            var closeDeleteBtn = document.getElementById("close-delete");
-        
-            openCreateBtn.onclick = function() {
-                createModal.style.display = "block";
-            }
+        openEditBtn.onclick = function() {
+            editModal.style.display = "block";
+        }
 
-            openEditBtn.onclick = function() {
-                editModal.style.display = "block";
-            }
+        openDeleteBtn.onclick = function() {
+            deleteModal.style.display = "block";
+        }
+    
+        // When the user clicks on <span> (x), close the modal
+        closeCreateBtn.onclick = function() {
+            createModal.style.display = "none";
+        }
 
-            openDeleteBtn.onclick = function() {
-                deleteModal.style.display = "block";
-            }
-        
-            // When the user clicks on <span> (x), close the modal
-            closeCreateBtn.onclick = function() {
+        closeEditBtn.onclick = function() {
+            editModal.style.display = "none";
+        }
+
+        closeDeleteBtn.onclick = function() {
+            deleteModal.style.display = "none";
+        }
+    
+        // When the user clicks anywhere outside of the modal, close it
+        window.onclick = function(event) {
+            if (event.target == createModal) {
                 createModal.style.display = "none";
-            }
-
-            closeEditBtn.onclick = function() {
+            } else if (event.target == editModal){
                 editModal.style.display = "none";
-            }
-
-            closeDeleteBtn.onclick = function() {
+            } else if (event.target == deleteModal){
                 deleteModal.style.display = "none";
             }
+        }
         
-            // When the user clicks anywhere outside of the modal, close it
-            window.onclick = function(event) {
-                if (event.target == createModal) {
-                    createModal.style.display = "none";
-                } else if (event.target == editModal){
-                    editModal.style.display = "none";
-                } else if (event.target == deleteModal){
-                    deleteModal.style.display = "none";
-                }
-            }
-            
-        </script>
+    </script>
 
-    </body>
-</html>
+</body>
 

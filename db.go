@@ -21,6 +21,7 @@ type Note struct {
 	Share   pq.Int32Array
 	Name    string
 	Date    time.Time
+	Flag    int
 	Content string
 }
 

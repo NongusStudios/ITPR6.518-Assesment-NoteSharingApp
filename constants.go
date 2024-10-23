@@ -14,3 +14,12 @@ const (
 const (
 	argBindport = 1
 )
+
+// Note Flags
+const (
+	NoteFlagNote = iota
+	NoteFlagInProgress
+	NoteFlagCompleted
+	NoteFlagCancelled
+	NoteFlagDelegated
+)

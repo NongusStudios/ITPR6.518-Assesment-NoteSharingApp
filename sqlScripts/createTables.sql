@@ -18,12 +18,13 @@ CREATE TABLE "notes" (
     note_owner INTEGER NOT NULL,
     note_share INTEGER[], -- Comma seperated list of usernames, If set to global it is visible to all users
     note_name VARCHAR(255) NOT NULL,
-    note_date DATE,
-    note_content TEXT,
+    note_date DATE NOT NULL,
+    note_flag INTEGER NOT NULL,
+    note_content TEXT NOT NULL,
     CONSTRAINT fk_note_owner
         FOREIGN KEY(note_owner)
             REFERENCES users(user_id)
 );
 
-INSERT INTO notes(note_owner, note_share, note_name, note_date, note_content)
-VALUES(1, ARRAY[]::INTEGER[], 'Welcome', NOW(), 'Welcome to Enterprise Note Sharer enjoy your notes');
+INSERT INTO notes(note_owner, note_share, note_name, note_date, note_flag, note_content)
+VALUES(1, ARRAY[]::INTEGER[], 'Welcome', NOW(), 0, 'Welcome to Enterprise Note Sharer enjoy your notes');
