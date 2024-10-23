@@ -5,9 +5,9 @@ table {
 }
   
 td, th {
-    border: 1px solid #dddddd;
+    border: 2px solid teal;
     text-align: left;
-    padding: 8px;
+    padding: 12px;
     text-wrap: auto;
 }
 
@@ -15,9 +15,131 @@ tr:nth-child(even) {
     background-color: #dddddd;
 }
 
+tr:nth-child(odd) {
+    background-color: ghostwhite;
+}
+
 fieldset {
     width: 25%;
     text-wrap: auto;
+    border: 2px solid teal;
+}
+
+input, select, textarea, fieldset {
+    margin-bottom: 5px;
+}
+
+.auth-form-body {
+    background-color: darkslategrey;
+}
+
+.dashboard-body {
+    background-color: lightslategrey;
+}
+
+.center-text {
+    text-align: center;
+}
+
+.center {
+    margin: auto;
+    width: 50%;
+}
+
+.auth-form {
+    margin: 0;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    -ms-transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%);
+
+    border: 2px solid teal;
+    width: 30%;
+    height: 30%;
+
+    background-color: #dddddd;
+
+    padding: 5%;
+
+    display: grid;
+    grid-template-areas:
+        'header header'
+        'form action';
+}
+
+.auth-area-header {
+    grid-area: header;
+}
+.auth-area-form {
+    grid-area: form;
+}
+.auth-area-action {
+    grid-area: action;
+}
+
+.flex-align-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    padding: 2% 2%;
+    background-color: grey;
+    width: 100%;
+    max-height: 10%;
+    border-bottom: 4px solid teal;
+}
+
+.dashboard-content {
+    padding: 10%;
+}
+
+/* Whats this? some kind of stupid elongated naming convention? */
+.hyper-button {
+    color: ghostwhite;
+    background-color: teal;
+    border: 2px solid black;
+    text-decoration: none;
+    padding: 5px;
+}
+
+.action-button {
+    width: 90%;
+    height: 32px;
+    background-color: teal;
+    color: ghostwhite;
+    border: 2px solid black;
+    transition-duration: 0.1s;
+}
+
+.action-button:hover {
+    border: 2px solid #04AA6D;
+}
+
+.submit {
+    width: 128px;
+    height: 32px;
+    background-color: teal;
+    color: ghostwhite;
+    border: 2px solid black;
+    transition-duration: 0.1s;
+}
+
+.submit:hover {
+    border: 2px solid #04AA6D;
+}
+
+.action-button-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    margin: auto;
+    width: 50%;
+    padding: 10px;
 }
 
 /* The Modal (background) */
@@ -36,13 +158,13 @@ fieldset {
   
 /* Modal Content/Box */
 .modal-content {
-    background-color: #fefefe;
+    background-color: #dddddd;
     margin: 15% auto; /* 15% from the top and centered */
-    padding: 20px;
-    border: 1px solid #888;
+    padding: 32px;
+    border: 2px solid teal;
     width: 80%; /* Could be more or less, depending on screen size */
 }
-  
+
 /* The Close Button */
 .close {
     color: #aaa;
@@ -56,8 +178,4 @@ fieldset {
     color: black;
     text-decoration: none;
     cursor: pointer;
-}
-
-.test {
-    border: 4px solid red;
 }

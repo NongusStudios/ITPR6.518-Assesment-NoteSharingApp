@@ -4,19 +4,24 @@
     <link rel="stylesheet" href="/statics/style.css">
 </head>
 
-<html>
-    <main>
-        <h1>Register</h1>
-        <form action="/register" method="post">
-            <label for="username">Username:</label>
-            <input type="text" id="username" name="username" required>
-            <br>
-            <label for="password">Password:</label>
-            <input type="password" id="password" name="password" required>
-            <br>
-            <input type="submit" value="Register">
-        </form>
-        <a href="/login">login</a>
-        <p style="color: red;">{{.RegErrMsg}}</p>
-    </main>
-</html>
+<body class="auth-form-body">
+    <div class="auth-form">
+        <div class="auth-area-header">
+            <h1 class="center-text">Register</h1>
+        </div>
+        <div class="auth-area-form"><center>
+            <form id="register-form" action="/register" method="post">
+                <label for="username">Username</label><br>
+                <input type="text" id="username" name="username" required>
+                <br>
+                <label for="password">Password</label><br>
+                <input type="password" id="password" name="password" required>
+            </form>
+        </center></div>
+        <div class="auth-area-action flex-align-center"><center>
+            <input type="submit" form="register-form" value="Register"><br>
+            <a href="/login">login</a>
+            <p style="color: red;">{{.RegErrMsg}}</p>
+        </center></div>
+    </div>
+</body>

@@ -4,20 +4,25 @@
     <link rel="stylesheet" href="/statics/style.css">
 </head>
 
-<html>
-    <body>
-        <h1>Login</h1>
-        <form action="/login" method="post">
-            <label for="username">Username:</label>
-            <input type="text" id="username" name="username" required>
-            <br>
-            <label for="password">Password:</label>
-            <input type="password" id="password" name="password" required>
-            <br>
-            <input type="submit" value="Login">
-            <!--<label id="err" style="color: red;">Incorrect Username/Password</label>-->
-        </form>
-        <a href="/register">Register</a>
-        <p style="color: red;">{{.LogErrMsg}}</p>
-    </body>
-</html>
+<body class="auth-form-body">
+    <div class="auth-form">
+        <div class="auth-area-header">
+            <h1 class="center-text">Login</h1>
+        </div>
+        <div class="auth-area-form"><center>
+            <form id="login-form" action="/login" method="post">
+                <label for="username">Username</label><br>
+                <input type="text" id="username" name="username" required>
+                <br>
+                <label for="password">Password</label><br>
+                <input type="password" id="password" name="password" required>
+                <!--<label id="err" style="color: red;">Incorrect Username/Password</label>-->
+            </form>
+        </center></div>
+        <div class="auth-area-action flex-align-center"><center>
+            <input type="submit" form="login-form" value="Login"><br>
+            <a href="/register">Register</a>
+            <p style="color: red;">{{.LogErrMsg}}</p>
+        </center></div>
+    </div>
+</body>

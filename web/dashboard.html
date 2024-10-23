@@ -4,34 +4,40 @@
     <link rel="stylesheet" href="/statics/style.css">
 </head>
 
-<body>
-    <h1 style="text-align: center;">Logged in as {{.CurrentUser.Username}}</h1>
-    <a href="/logout">Logout</a><br>
+<body class="dashboard-body">
+    <header class="header">
+        <a href="/logout" class="hyper-button">Logout</a>
+        <h2 style="color: ghostwhite;">Logged in as {{.CurrentUser.Username}}</h1>
+    <header>
 
-    <button id="open-create">Create</button>
-    <button id="open-edit">Edit</button>
-    <button id="open-delete">Delete</button>        
+    <div class="dashboard-content">
+        <div class="action-button-container">
+            <button class="action-button" id="open-create">Create</button>
+            <button class="action-button" id="open-edit">Edit</button>
+            <button class="action-button" id="open-delete">Delete</button>        
+        </div>
 
-    <table>
-        <tr>
-            <th>ID</th>
-            <th>Owner</th>
-            <th>Note Name</th>
-            <th>Note Date</th>
-            <th>Note Status</th>
-            <th>Note Content</th>
-        </tr>
-        {{range $index, $note := .Notes}}
-        <tr>
-            <th>{{addOne $index}}</th>
-            <th>{{getUserName $note.Owner}}</th>
-            <th>{{$note.Name}}</th>
-            <th>{{shortDate $note.Date}}</th>
-            <th>{{noteFlagToString $note.Flag}}</th>
-            <th>{{$note.Content}}</th>
-        </tr>
-        {{end}}
-    </table>
+        <table>
+            <tr>
+                <th>ID</th>
+                <th>Owner</th>
+                <th>Note Name</th>
+                <th>Note Date</th>
+                <th>Note Status</th>
+                <th>Note Content</th>
+            </tr>
+            {{range $index, $note := .Notes}}
+            <tr>
+                <th>{{addOne $index}}</th>
+                <th>{{getUserName $note.Owner}}</th>
+                <th>{{$note.Name}}</th>
+                <th>{{shortDate $note.Date}}</th>
+                <th>{{noteFlagToString $note.Flag}}</th>
+                <th>{{$note.Content}}</th>
+            </tr>
+            {{end}}
+        </table>
+    </div>
 
     <div id="create-modal" class="modal">
         <div class="modal-content">
@@ -39,14 +45,16 @@
 
             <!-- Create Note Form -->
             <form action="/create" method="post">
-                <label for="create-note-name">Note Name:</label>
+                <label for="create-note-name">Note Name</label>
+                <br>
                 <input type="text" id="create-note-name" name="create-note-name" required>
                 <br>
-                <label for="create-note-content">Note:</label>
+                <label for="create-note-content">Note</label>
                 <br>
                 <textarea id="create-note-content" name="create-note-content" rows="6" cols="50" required></textarea>
                 <br>
-                <label for="create-note-flags">Note Status:</label>
+                <label for="create-note-flags">Note Status</label>
+                <br>
                 <select id="create-note-flags" name="create-note-flags" required>
                     <option value="0">Note</option>
                     <option value="1">In Progress</option>
@@ -62,7 +70,7 @@
                 {{end}}
                 </fieldset>
                 <br>
-                <input type="submit" value="Create Note">
+                <input class="submit" type="submit" value="Create Note">
             </form>
         </div>
     </div>
@@ -73,8 +81,9 @@
             <span id="close-edit" class="close">&times;</span>
 
             <form action="/edit" method="post">
-                <label for="edit-select-note">Note:</label>
-                <select name="edit-select-note" id="select-note">
+                <label for="edit-select-note">Note</label>
+                <br>
+                <select name="edit-select-note" id="edit-select-note" onchange="updateEditForm();">
                     {{range $index, $note := .Notes}}
                         {{if isNoteOwned $note}}
                             <option value={{$note.Name}}>{{$note.Name}}</option>
@@ -84,16 +93,18 @@
 
                 <br>
 
-                <label for="edit-note-name">Edit Name:</label>
+                <label for="edit-note-name">Edit Name</label>
+                <br>
                 <input type="text" name="edit-note-name" id="edit-note-name" required>
 
                 <br>
 
-                <label for="edit-note-content">Edit Note:</label>
+                <label for="edit-note-content">Edit Note</label>
                 <br>
                 <textarea id="edit-note-content" name="edit-note-content" rows="6" cols="50" required></textarea>
                 <br>
-                <label for="edit-note-flags">Note Status:</label>
+                <label for="edit-note-flags">Note Status</label>
+                <br>
                 <select id="edit-note-flags" name="edit-note-flags" required>
                     <option value="0">Note</option>
                     <option value="1">In Progress</option>
@@ -119,7 +130,8 @@
         <div class="modal-content">
             <span id="close-delete" class="close">&times;</span>
             <form action="/delete" method="post">
-                <label for="delete-select-note">Note:</label>
+                <label for="delete-select-note">Note</label>
+                <br>
                 <select name="delete-select-note" id="select-note">
                     {{range $index, $note := .Notes}}
                         {{if isNoteOwned $note}}
@@ -133,7 +145,12 @@
         </div>
     </div>
 
-    <script>
+    <script type="text/javascript">
+        var objUsers = JSON.parse({{ json .Users }});
+        var objNotes = JSON.parse({{ json .Notes }});
+    </script>
+
+    <script type="text/javascript">
         var createModal = document.getElementById("create-modal");
         var openCreateBtn = document.getElementById("open-create");
         var closeCreateBtn = document.getElementById("close-create");
@@ -182,7 +199,32 @@
             }
         }
         
+        function updateEditForm(){
+            var selectedNote = document.getElementById("edit-select-note").value;
+
+            for(note of objNotes){
+                if(note.Name == selectedNote){
+                    selectedNote = note;
+                    break;
+                }
+            }
+
+            console.log(selectedNote.Share);
+
+            document.getElementById("edit-note-name").value = selectedNote.Name;
+            document.getElementById("edit-note-content").value = selectedNote.Content;
+            document.getElementById("edit-note-flags").value = selectedNote.Flag;
+            
+            for(user of objUsers){
+                if(selectedNote.Share.indexOf(user.Id) !== -1){
+                    document.getElementById("edit-" + user.Username).checked = true;
+                } else {
+                    document.getElementById("edit-" + user.Username).checked = false;
+                }
+            }
+        }
+
+        updateEditForm();
     </script>
 
 </body>
-

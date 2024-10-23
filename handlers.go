@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"html/template"
 	"net/http"
 	"strconv"
@@ -177,6 +178,13 @@ func (a *App) dashboardHandler(w http.ResponseWriter, r *http.Request) {
 					"Cancelled",
 					"Delegated",
 				}[noteFlag]
+			},
+			"json": func(s interface{}) string {
+				jsonBytes, err := json.Marshal(s)
+				if err != nil {
+					return ""
+				}
+				return string(jsonBytes)
 			},
 		},
 		tmplData)
