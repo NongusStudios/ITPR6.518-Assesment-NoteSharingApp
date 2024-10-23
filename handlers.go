@@ -127,6 +127,13 @@ func (a *App) fetchUsersExclude(exclude User) ([]User, error) {
 	return users, nil
 }
 
+// Run this before sending user data to the website
+func clearUserPasswordHash(users []User) {
+	for i, _ := range users {
+		users[i].Password = ""
+	}
+}
+
 func (a *App) dashboardHandler(w http.ResponseWriter, r *http.Request) {
 	isAuthenticated(w, r)
 
@@ -139,6 +146,7 @@ func (a *App) dashboardHandler(w http.ResponseWriter, r *http.Request) {
 	notes = getAccessibleNotes(user, notes)
 
 	otherUsers, err := a.fetchUsersExclude(user)
+	clearUserPasswordHash(otherUsers)
 
 	checkInternalServerError(err, w)
 
