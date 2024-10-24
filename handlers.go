@@ -33,11 +33,13 @@ func createUserSession(w http.ResponseWriter, user User) {
 }
 
 func (a *App) indexHandler(w http.ResponseWriter, r *http.Request) {
-	isAuthenticated(w, r)
+	if !isAuthenticated(w, r) {
+		return
+	}
 	http.Redirect(w, r, "/dashboard", http.StatusMovedPermanently)
 }
 
-func (a *App) fetchNotes() ([]Note, error) {
+func (a *App) fetchNotes(pattern string) ([]Note, error) {
 	noteCount := 0
 
 	rows, err := a.db.Query("SELECT COUNT(note_id) FROM notes")
@@ -54,7 +56,15 @@ func (a *App) fetchNotes() ([]Note, error) {
 
 	notes := make([]Note, 0, noteCount)
 
-	rows, err = a.db.Query("SELECT note_owner, note_share, note_name, note_date, note_flag, note_content FROM notes ORDER BY note_id DESC")
+	if pattern == "%" {
+		rows, err = a.db.Query(
+			"SELECT note_owner, note_share, note_name, note_date, note_flag, note_content FROM notes ORDER BY note_id DESC")
+	} else {
+		rows, err = a.db.Query(
+			"SELECT note_owner, note_share, note_name, note_date, note_flag, note_content FROM notes WHERE note_name LIKE $1",
+			pattern)
+	}
+
 	if err != nil {
 		return make([]Note, 0), err
 	}
@@ -129,18 +139,22 @@ func (a *App) fetchUsersExclude(exclude User) ([]User, error) {
 
 // Run this before sending user data to the website
 func clearUserPasswordHash(users []User) {
-	for i, _ := range users {
+	for i := range users {
 		users[i].Password = ""
 	}
 }
 
+var currentSearchPattern = "%"
+
 func (a *App) dashboardHandler(w http.ResponseWriter, r *http.Request) {
-	isAuthenticated(w, r)
+	if !isAuthenticated(w, r) {
+		return
+	}
 
 	user, err := a.fetchCurrentUser(r)
 	checkInternalServerError(err, w)
 
-	notes, err := a.fetchNotes()
+	notes, err := a.fetchNotes(currentSearchPattern)
 	checkInternalServerError(err, w)
 
 	notes = getAccessibleNotes(user, notes)
@@ -198,6 +212,11 @@ func (a *App) dashboardHandler(w http.ResponseWriter, r *http.Request) {
 		tmplData)
 }
 
+func (a *App) searchHandler(w http.ResponseWriter, r *http.Request) {
+	currentSearchPattern = r.FormValue("search") + "%"
+	http.Redirect(w, r, "/dashboard", http.StatusMovedPermanently)
+}
+
 func getShareDetails(formIdPrefix string, otherUsers []User, w http.ResponseWriter, r *http.Request) []int {
 	var share []int
 
@@ -219,7 +238,9 @@ func getShareDetails(formIdPrefix string, otherUsers []User, w http.ResponseWrit
 }
 
 func (a *App) createNoteHandler(w http.ResponseWriter, r *http.Request) {
-	isAuthenticated(w, r)
+	if !isAuthenticated(w, r) {
+		return
+	}
 
 	user, err := a.fetchCurrentUser(r)
 	checkInternalServerError(err, w)
@@ -251,7 +272,9 @@ func (a *App) createNoteHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) editNoteHandler(w http.ResponseWriter, r *http.Request) {
-	isAuthenticated(w, r)
+	if !isAuthenticated(w, r) {
+		return
+	}
 
 	user, err := a.fetchCurrentUser(r)
 	checkInternalServerError(err, w)
@@ -276,7 +299,7 @@ func (a *App) editNoteHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "loi: "+err.Error(), http.StatusBadRequest)
 		return
 	default:
-		_, err = a.db.Exec("UPDATE notes SET note_share=$1, note_name=$2, note_flag=$3 note_content=$4 WHERE note_name=$5",
+		_, err = a.db.Exec("UPDATE notes SET note_share=$1, note_name=$2, note_flag=$3, note_content=$4 WHERE note_name=$5",
 			editedShare, editedName, editedFlag, editedContent, noteToEdit)
 		checkInternalServerError(err, w)
 		http.Redirect(w, r, "/dashboard", http.StatusMovedPermanently)

@@ -10,7 +10,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func isAuthenticated(w http.ResponseWriter, r *http.Request) {
+func isAuthenticated(w http.ResponseWriter, r *http.Request) bool {
 	authenticated := false
 
 	//m := map[string]interface{}{}
@@ -31,6 +31,8 @@ func isAuthenticated(w http.ResponseWriter, r *http.Request) {
 	if !authenticated {
 		http.Redirect(w, r, "/login", http.StatusMovedPermanently)
 	}
+
+	return authenticated
 }
 
 func setupAuth() {
@@ -99,11 +101,6 @@ func (a *App) registerHandler(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 
-	// For dev purposes will be removed
-	if username == "dev" {
-		goto dev
-	}
-
 	// User name can't contain spaces. My reasoning is that sql statements require spaces so sql injection would be impossible
 	if !ValidateString(username, []rune{' '}, []ValidateRequire{}) {
 		authData.RegErrMsg = "Username can't contain spaces"
@@ -121,8 +118,6 @@ func (a *App) registerHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/register", http.StatusMovedPermanently)
 		return
 	}
-
-dev:
 
 	authData.RegErrMsg = ""
 
