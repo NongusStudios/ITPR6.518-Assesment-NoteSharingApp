@@ -9,6 +9,7 @@ import (
 
 func checkInternalServerError(err error, w http.ResponseWriter) {
 	if err != nil {
+		log.Print(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/icza/session"
@@ -39,7 +40,7 @@ func (a *App) indexHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/dashboard", http.StatusMovedPermanently)
 }
 
-func (a *App) fetchNotes(pattern string) ([]Note, error) {
+func (a *App) fetchNotes() ([]Note, error) {
 	noteCount := 0
 
 	rows, err := a.db.Query("SELECT COUNT(note_id) FROM notes")
@@ -56,14 +57,8 @@ func (a *App) fetchNotes(pattern string) ([]Note, error) {
 
 	notes := make([]Note, 0, noteCount)
 
-	if pattern == "%" {
-		rows, err = a.db.Query(
-			"SELECT note_owner, note_share, note_name, note_date, note_flag, note_content FROM notes ORDER BY note_id DESC")
-	} else {
-		rows, err = a.db.Query(
-			"SELECT note_owner, note_share, note_name, note_date, note_flag, note_content FROM notes WHERE note_name LIKE $1",
-			pattern)
-	}
+	rows, err = a.db.Query(
+		"SELECT note_owner, note_share, note_name, note_date, note_flag, note_content FROM notes ORDER BY note_id DESC")
 
 	if err != nil {
 		return make([]Note, 0), err
@@ -97,6 +92,42 @@ func getAccessibleNotes(user User, notes []Note) []Note {
 			}
 		}
 	}
+	return filteredNotes
+}
+
+func searchNotes(notes []Note, keyword string, user int, date string, flag int) []Note {
+	filteredNotes := make([]Note, 0, len(notes))
+
+	for _, note := range notes {
+		hasKeyword, hasUser, hasDate, hasFlag := false, false, false, false
+
+		// Keyword search
+		if keyword == "" ||
+			strings.Contains(strings.ToLower(note.Name), strings.ToLower(searchByKeyword)) ||
+			strings.Contains(strings.ToLower(note.Content), strings.ToLower(searchByKeyword)) {
+			hasKeyword = true
+		}
+
+		// User search
+		if user == -1 || note.Owner == int32(user) {
+			hasUser = true
+		}
+
+		// Date search
+		if date == "" || note.Date.Format("2006-01-02") == date {
+			hasDate = true
+		}
+
+		// Flag search
+		if flag == -1 || note.Flag == flag {
+			hasFlag = true
+		}
+
+		if hasKeyword && hasUser && hasDate && hasFlag {
+			filteredNotes = append(filteredNotes, note)
+		}
+	}
+
 	return filteredNotes
 }
 
@@ -144,7 +175,12 @@ func clearUserPasswordHash(users []User) {
 	}
 }
 
-var currentSearchPattern = "%"
+var (
+	searchByKeyword = ""
+	searchByUser    = -1
+	searchByDate    = ""
+	searchByFlag    = -1
+)
 
 func (a *App) dashboardHandler(w http.ResponseWriter, r *http.Request) {
 	if !isAuthenticated(w, r) {
@@ -154,10 +190,12 @@ func (a *App) dashboardHandler(w http.ResponseWriter, r *http.Request) {
 	user, err := a.fetchCurrentUser(r)
 	checkInternalServerError(err, w)
 
-	notes, err := a.fetchNotes(currentSearchPattern)
+	notes, err := a.fetchNotes()
+
 	checkInternalServerError(err, w)
 
 	notes = getAccessibleNotes(user, notes)
+	notes = searchNotes(notes, searchByKeyword, searchByUser, searchByDate, searchByFlag)
 
 	otherUsers, err := a.fetchUsersExclude(user)
 	clearUserPasswordHash(otherUsers)
@@ -213,7 +251,15 @@ func (a *App) dashboardHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) searchHandler(w http.ResponseWriter, r *http.Request) {
-	currentSearchPattern = r.FormValue("search") + "%"
+	if !isAuthenticated(w, r) {
+		return
+	}
+
+	searchByKeyword = r.FormValue("search-by-keyword")
+	searchByUser, _ = strconv.Atoi(r.FormValue("search-by-user"))
+	searchByDate = r.FormValue("search-by-date")
+	searchByFlag, _ = strconv.Atoi(r.FormValue("search-by-flags"))
+
 	http.Redirect(w, r, "/dashboard", http.StatusMovedPermanently)
 }
 
@@ -282,7 +328,7 @@ func (a *App) editNoteHandler(w http.ResponseWriter, r *http.Request) {
 	noteToEdit := r.FormValue("edit-select-note")
 	editedName := r.FormValue("edit-note-name")
 	editedContent := r.FormValue("edit-note-content")
-	editedFlag, _ := strconv.Atoi(r.FormValue("edit-note-flag"))
+	editedFlag, _ := strconv.Atoi(r.FormValue("edit-note-flags"))
 
 	otherUsers, err := a.fetchUsersExclude(user)
 	checkInternalServerError(err, w)

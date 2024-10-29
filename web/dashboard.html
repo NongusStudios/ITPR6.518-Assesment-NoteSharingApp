@@ -18,7 +18,22 @@
         </div>
 
         <form action="/search" method="post">
-            <input type="text" placeholder="Search.." name="search" id="search">
+            <input type="text" placeholder="Keyword.." name="search-by-keyword" id="search-by-keyword">
+            <select id="search-by-user" name="search-by-user">
+                <option value="-1" label="All"></option>
+                {{range $index, $user := .Users}}
+                    <option value={{$user.Id}} label={{$user.Username}}></option>
+                {{end}}
+            </select>
+            <select id="search-by-flags" name="search-by-flags" required>
+                <option value="-1">All</option>
+                <option value="0">Note</option>
+                <option value="1">In Progress</option>
+                <option value="2">Completed</option>
+                <option value="3">Cancelled</option>
+                <option value="4">Delegated</option>
+            </select>
+            <input type="date" name="search-by-date" id="search-by-date">
             <button type="submit">&#x1F50D;</button>
         </form>
 
