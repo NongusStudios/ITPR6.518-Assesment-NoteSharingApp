@@ -16,13 +16,20 @@ type User struct {
 	Password string
 }
 
+type UserSettings struct {
+	Id         int32
+	UserId     int32
+	Colleagues pq.Int32Array
+}
+
 type Note struct {
-	Owner   int32
-	Share   pq.Int32Array
-	Name    string
-	Date    time.Time
-	Flag    int
-	Content string
+	Owner          int32
+	Share          pq.Int32Array
+	Name           string
+	Date           time.Time
+	CompletionDate time.Time
+	Flag           int
+	Content        string
 }
 
 func execSqlScript(db *sql.DB, scriptPath string) error {

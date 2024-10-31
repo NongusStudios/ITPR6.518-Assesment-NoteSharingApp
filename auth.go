@@ -132,6 +132,11 @@ func (a *App) registerHandler(w http.ResponseWriter, r *http.Request) {
 		_, err = a.db.Exec("INSERT INTO users(username, pass) VALUES($1, $2)", username, hashedPassword)
 		checkInternalServerError(err, w)
 
+		err = a.db.QueryRow("SELECT user_id FROM users WHERE username=$1", username).Scan(&user.Id)
+		checkInternalServerError(err, w)
+		_, err = a.db.Exec("INSERT INTO user_settings(user_id, colleagues) VALUES($1, ARRAY[]::INTEGER[])", user.Id)
+		checkInternalServerError(err, w)
+
 		http.Redirect(w, r, "/login", http.StatusMovedPermanently)
 	case err != nil:
 		http.Error(w, "loi: "+err.Error(), http.StatusBadRequest)

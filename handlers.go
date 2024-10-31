@@ -13,9 +13,10 @@ import (
 )
 
 type DashboardData struct {
-	CurrentUser User
-	Users       []User
-	Notes       []Note
+	CurrentUser         User
+	CurrentUserSettings UserSettings
+	Users               []User
+	Notes               []Note
 }
 
 func executeTemplate(w http.ResponseWriter, name, path string, funcMap template.FuncMap, data any) {
@@ -58,8 +59,7 @@ func (a *App) fetchNotes() ([]Note, error) {
 	notes := make([]Note, 0, noteCount)
 
 	rows, err = a.db.Query(
-		"SELECT note_owner, note_share, note_name, note_date, note_flag, note_content FROM notes ORDER BY note_id DESC")
-
+		"SELECT note_owner, note_share, note_name, note_date, note_completion_date, note_flag, note_content FROM notes ORDER BY note_id DESC")
 	if err != nil {
 		return make([]Note, 0), err
 	}
@@ -67,7 +67,7 @@ func (a *App) fetchNotes() ([]Note, error) {
 	for rows.Next() {
 		note := Note{}
 
-		if e := rows.Scan(&note.Owner, &note.Share, &note.Name, &note.Date, &note.Flag, &note.Content); e != nil {
+		if e := rows.Scan(&note.Owner, &note.Share, &note.Name, &note.Date, &note.CompletionDate, &note.Flag, &note.Content); e != nil {
 			return notes, e
 		}
 
@@ -114,7 +114,7 @@ func searchNotes(notes []Note, keyword string, user int, date string, flag int) 
 		}
 
 		// Date search
-		if date == "" || note.Date.Format("2006-01-02") == date {
+		if date == "" || note.Date.Format("2006-01-02") == date || (note.Flag == NoteFlagCompleted && note.CompletionDate.Format("2006-01-02") == date) {
 			hasDate = true
 		}
 
@@ -146,6 +146,15 @@ func (a *App) fetchCurrentUser(r *http.Request) (User, error) {
 	}
 
 	return user, nil
+}
+
+func (a *App) fetchUserSettings(user User) (UserSettings, error) {
+	var settings UserSettings
+	err := a.db.QueryRow("SELECT setting_id, user_id, colleagues FROM user_settings WHERE user_id=$1", user.Id).Scan(&settings.Id, &settings.UserId, &settings.Colleagues)
+	if err != nil {
+		return UserSettings{}, err
+	}
+	return settings, nil
 }
 
 // exclude - exclude this user from list
@@ -190,6 +199,9 @@ func (a *App) dashboardHandler(w http.ResponseWriter, r *http.Request) {
 	user, err := a.fetchCurrentUser(r)
 	checkInternalServerError(err, w)
 
+	settings, err := a.fetchUserSettings(user)
+	checkInternalServerError(err, w)
+
 	notes, err := a.fetchNotes()
 
 	checkInternalServerError(err, w)
@@ -203,9 +215,10 @@ func (a *App) dashboardHandler(w http.ResponseWriter, r *http.Request) {
 	checkInternalServerError(err, w)
 
 	tmplData := DashboardData{
-		CurrentUser: user,
-		Users:       otherUsers,
-		Notes:       notes,
+		CurrentUser:         user,
+		CurrentUserSettings: settings,
+		Users:               otherUsers,
+		Notes:               notes,
 	}
 
 	executeTemplate(w, "dashboard.html", "web/dashboard.html",
@@ -224,8 +237,22 @@ func (a *App) dashboardHandler(w http.ResponseWriter, r *http.Request) {
 
 				return name
 			},
+			"isColleague": func(settings UserSettings, id int32) bool {
+				for _, colleague := range settings.Colleagues {
+					if colleague == id {
+						return true
+					}
+				}
+				return false
+			},
 			"shortDate": func(date time.Time) string {
 				return date.Format("02/01/2006")
+			},
+			"completedDate": func(note Note) string {
+				if note.Flag == NoteFlagCompleted {
+					return note.CompletionDate.Format("02/01/2006")
+				}
+				return "N/A"
 			},
 			"isNoteOwned": func(note Note) bool {
 				return note.Owner == user.Id
@@ -305,8 +332,8 @@ func (a *App) createNoteHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch {
 	case err == sql.ErrNoRows:
-		_, err = a.db.Exec("INSERT INTO notes(note_owner, note_share, note_name, note_date, note_flag, note_content) VALUES($1, $2, $3, $4, $5, $6)",
-			user.Id, share, noteName, time.Now(), noteFlag, noteContent)
+		_, err = a.db.Exec("INSERT INTO notes(note_owner, note_share, note_name, note_date, note_completion_date, note_flag, note_content) VALUES($1, $2, $3, $4, $5, $6, $7)",
+			user.Id, share, noteName, time.Now(), time.Now(), noteFlag, noteContent)
 		checkInternalServerError(err, w)
 		http.Redirect(w, r, "/dashboard", http.StatusMovedPermanently)
 	case err != nil:
@@ -345,15 +372,17 @@ func (a *App) editNoteHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "loi: "+err.Error(), http.StatusBadRequest)
 		return
 	default:
-		_, err = a.db.Exec("UPDATE notes SET note_share=$1, note_name=$2, note_flag=$3, note_content=$4 WHERE note_name=$5",
-			editedShare, editedName, editedFlag, editedContent, noteToEdit)
+		_, err = a.db.Exec("UPDATE notes SET note_share=$1, note_name=$2, note_completion_date=$3, note_flag=$4, note_content=$5 WHERE note_name=$6",
+			editedShare, editedName, time.Now(), editedFlag, editedContent, noteToEdit)
 		checkInternalServerError(err, w)
 		http.Redirect(w, r, "/dashboard", http.StatusMovedPermanently)
 	}
 }
 
 func (a *App) deleteNoteHandler(w http.ResponseWriter, r *http.Request) {
-	isAuthenticated(w, r)
+	if !isAuthenticated(w, r) {
+		return
+	}
 
 	user, err := a.fetchCurrentUser(r)
 	checkInternalServerError(err, w)
@@ -374,4 +403,26 @@ func (a *App) deleteNoteHandler(w http.ResponseWriter, r *http.Request) {
 		checkInternalServerError(err, w)
 		http.Redirect(w, r, "/dashboard", http.StatusMovedPermanently)
 	}
+}
+
+func (a *App) editSettingsHandler(w http.ResponseWriter, r *http.Request) {
+	if !isAuthenticated(w, r) {
+		return
+	}
+
+	user, err := a.fetchCurrentUser(r)
+	checkInternalServerError(err, w)
+
+	otherUsers, err := a.fetchUsersExclude(user)
+	checkInternalServerError(err, w)
+
+	colleagues := getShareDetails("settings", otherUsers, w, r)
+
+	settings, err := a.fetchUserSettings(user)
+	checkInternalServerError(err, w)
+
+	_, err = a.db.Exec("UPDATE user_settings SET colleagues=$1 WHERE setting_id=$2", colleagues, settings.Id)
+	checkInternalServerError(err, w)
+
+	http.Redirect(w, r, "/dashboard", http.StatusMovedPermanently)
 }

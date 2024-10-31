@@ -1,14 +1,17 @@
 <!DOCTYPE html>
-
+<html>
 <head>
     <link rel="stylesheet" href="/statics/style.css">
 </head>
 
 <body class="dashboard-body">
     <header class="header">
-        <a href="/logout" class="hyper-button">Logout</a>
-        <h2 style="color: ghostwhite;">Logged in as {{.CurrentUser.Username}}</h1>
-    <header>
+        <div style="display: flex; justify-content: left; align-items: center; gap: 33px;">
+            <a href="/logout" class="hyper-button">Logout</a>
+            <button id="open-settings" class="hyper-button">&#9881;</button>
+            <h2 style="color: ghostwhite;">Logged in as {{.CurrentUser.Username}}</h2>
+        </div>
+    </header>
 
     <div class="dashboard-content">
         <div class="action-button-container">
@@ -51,7 +54,9 @@
                 <th>{{addOne $index}}</th>
                 <th>{{getUserName $note.Owner}}</th>
                 <th>{{$note.Name}}</th>
-                <th>{{shortDate $note.Date}}</th>
+                <th>Created: {{shortDate $note.Date}}<br>
+                    Completed: {{completedDate $note}}
+                </th>
                 <th>{{noteFlagToString $note.Flag}}</th>
                 <th>{{$note.Content}}</th>
             </tr>
@@ -85,7 +90,11 @@
                 <fieldset>
                     <legend>Share note with:</legend>
                 {{range $index, $user := .Users}}
-                    <input type="checkbox" id=create-{{$user.Username}} name=create-{{$user.Username}} value={{$user.Id}}>
+                    {{if isColleague $.CurrentUserSettings $user.Id}}
+                        <input type="checkbox" id=create-{{$user.Username}} name=create-{{$user.Username}} value={{$user.Id}} checked>
+                    {{else}}
+                        <input type="checkbox" id=create-{{$user.Username}} name=create-{{$user.Username}} value={{$user.Id}}>
+                    {{end}}
                     <label for=create-{{$user.Username}}>{{$user.Username}}</label><br>
                 {{end}}
                 </fieldset>
@@ -165,6 +174,40 @@
         </div>
     </div>
 
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <span id="close-settings" class="close">&times;</span>
+            <h2>Colleagues:</h2>
+            <table>
+                <tr>
+                    <th>Id</th>
+                    <th>Name</th>
+                </tr>
+                {{range $index, $id := .CurrentUserSettings.Colleagues}}
+                    <tr>
+                        <th>{{$id}}</th>
+                        <th>{{getUserName $id}}</th>
+                    </tr>
+                {{end}}
+            </table>
+
+            <form action="/editsettings" method="post">
+                <fieldset>
+                    <legend>Edit Colleagues:</legend>
+                    {{range $index, $user := .Users}}
+                        {{if isColleague $.CurrentUserSettings $user.Id}}
+                            <input type="checkbox" id=settings-{{$user.Username}} name=settings-{{$user.Username}} value={{$user.Id}} checked>
+                        {{else}}
+                            <input type="checkbox" id=settings-{{$user.Username}} name=setting-{{$user.Username}} value={{$user.Id}}>
+                        {{end}}
+                    <label for=settings-{{$user.Username}}>{{$user.Username}}</label><br>
+                    {{end}}
+                </fieldset>
+                <input type="submit" value="Change Settings">
+            </form>
+        </div>
+    </div>
+
     <script type="text/javascript">
         var objUsers = JSON.parse({{ json .Users }});
         var objNotes = JSON.parse({{ json .Notes }});
@@ -182,6 +225,10 @@
         var deleteModal = document.getElementById("delete-modal");
         var openDeleteBtn = document.getElementById("open-delete");
         var closeDeleteBtn = document.getElementById("close-delete");
+
+        var settingsModal = document.getElementById("settings-modal");
+        var openSettingsBtn = document.getElementById("open-settings");
+        var closeSettingsBtn = document.getElementById("close-settings");
     
         openCreateBtn.onclick = function() {
             createModal.style.display = "block";
@@ -193,6 +240,10 @@
 
         openDeleteBtn.onclick = function() {
             deleteModal.style.display = "block";
+        }
+
+        openSettingsBtn.onclick = function() {
+            settingsModal.style.display = "block";
         }
     
         // When the user clicks on <span> (x), close the modal
@@ -207,6 +258,10 @@
         closeDeleteBtn.onclick = function() {
             deleteModal.style.display = "none";
         }
+
+        closeSettingsBtn.onclick = function() {
+            settingsModal.style.display = "none";
+        }
     
         // When the user clicks anywhere outside of the modal, close it
         window.onclick = function(event) {
@@ -216,6 +271,8 @@
                 editModal.style.display = "none";
             } else if (event.target == deleteModal){
                 deleteModal.style.display = "none";
+            } else if (event.target == settingsModal){
+                settingsModal.style.display = "none";
             }
         }
         
@@ -248,3 +305,4 @@
     </script>
 
 </body>
+</html>
