@@ -2,4 +2,4 @@
 This application is for the EIT ITPR6.518 practical assesment.
 
 # Documentation
-See [docs.md](docs.md)
+See [docs.md](docs/docs.md)
