@@ -417,6 +417,9 @@ func (a *App) editSettingsHandler(w http.ResponseWriter, r *http.Request) {
 	checkInternalServerError(err, w)
 
 	colleagues := getShareDetails("settings", otherUsers, w, r)
+	if colleagues[0] == -1 {
+		return
+	}
 
 	settings, err := a.fetchUserSettings(user)
 	checkInternalServerError(err, w)

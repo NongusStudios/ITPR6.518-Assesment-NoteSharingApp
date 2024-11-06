@@ -57,6 +57,7 @@ func (a *App) loginHandler(w http.ResponseWriter, r *http.Request) {
 	if method != "POST" {
 		executeTemplate(w, "login.html", "web/login.html",
 			template.FuncMap{}, authData)
+		authData.LogErrMsg = ""
 		return
 	}
 
@@ -95,6 +96,7 @@ func (a *App) registerHandler(w http.ResponseWriter, r *http.Request) {
 	if method != "POST" {
 		executeTemplate(w, "register.html", "web/register.html",
 			template.FuncMap{}, authData)
+		authData.RegErrMsg = ""
 		return
 	}
 
@@ -119,13 +121,13 @@ func (a *App) registerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	authData.RegErrMsg = ""
-
 	var user User
 	err := a.db.QueryRow("SELECT user_id, username, pass FROM users WHERE username=$1", username).Scan(&user.Id, &user.Username, &user.Password)
 
 	switch {
 	case err == sql.ErrNoRows:
+		authData.RegErrMsg = ""
+
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 		checkInternalServerError(err, w)
 
@@ -142,7 +144,8 @@ func (a *App) registerHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "loi: "+err.Error(), http.StatusBadRequest)
 		return
 	default:
-		http.Redirect(w, r, "/login", http.StatusMovedPermanently)
+		authData.RegErrMsg = "User Already Exists."
+		http.Redirect(w, r, "/register", http.StatusMovedPermanently)
 	}
 }
 

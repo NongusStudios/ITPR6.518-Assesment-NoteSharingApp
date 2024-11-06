@@ -26,7 +26,7 @@ and then reiterating upon it until I was satisfied with its functionality and ro
 
 ### ERD
 
-![erd](erd.png)
+![erd.png](erd.png)
 
 ### Placeholders
 
@@ -54,4 +54,56 @@ focus on the backend implementation and rapidly develop a UI around it. In the f
 of development it was purely HTML with no CSS, and the CSS that is in the final version is
 nothing fancy (gets the job done).
 
+### Login / Register
 
+Any errors with input data will appear below the login button.
+
+![login](login.PNG)
+
+Once registered the user will be taken back to the login page. Error messages will appear in the same
+place as the login page.
+
+![register](register.PNG)
+
+### Dashboard
+
+Contains your notes and those shared with you.
+![dashboard.png](dashboard.PNG)
+
+### Create a Note
+
+![create-modal](create-modal.PNG)
+
+### Edit a Note
+
+Fields update to the notes content and options when you change the note.
+![edit-modal](edit-modal.PNG)
+
+### Delete a Note
+
+![delete-modal](delete-modal.PNG)
+
+### User Settings
+
+![settings-modal](settings-modal.PNG)
+
+## Testing
+
+While I haven't setup unit testing I have manually tested the functionality
+of the app, the results are in the following tables.
+
+### Authorization
+
+| Action | Expected | Result |
+| ------ | -------- | ------ |
+| Register a new account | A new entry added to users of same name and password | Same as Expected |
+| Register an existing account | Data is rejected and user prompted with warning | Same as Expected |
+| Register a new account with an invalid name/password | Data is rejected and user prompted with warning | Same as expected |
+| Login with an existing account and correct password | Taken to dashboard logged in as that user | Same as expected |
+| Login with an existing account and wrong password | Rejected and user prompted with warning | Same as expected |
+| Login with an account that doesn't exist | Rejected and user prompted with warning | Same as expected |
+
+### Dashboard
+
+| Action | Expected | Result |
+| ------ | -------- | ------ |

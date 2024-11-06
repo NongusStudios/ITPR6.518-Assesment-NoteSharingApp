@@ -198,7 +198,7 @@
                         {{if isColleague $.CurrentUserSettings $user.Id}}
                             <input type="checkbox" id=settings-{{$user.Username}} name=settings-{{$user.Username}} value={{$user.Id}} checked>
                         {{else}}
-                            <input type="checkbox" id=settings-{{$user.Username}} name=setting-{{$user.Username}} value={{$user.Id}}>
+                            <input type="checkbox" id=settings-{{$user.Username}} name=settings-{{$user.Username}} value={{$user.Id}}>
                         {{end}}
                     <label for=settings-{{$user.Username}}>{{$user.Username}}</label><br>
                     {{end}}

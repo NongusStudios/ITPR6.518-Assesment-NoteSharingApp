@@ -1,4 +1,5 @@
 DROP TABLE IF EXISTS "notes";
+DROP TABLE IF EXISTS "user_settings";
 DROP TABLE IF EXISTS "users";
 
 CREATE TABLE "users" (
