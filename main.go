@@ -7,6 +7,7 @@ var (
 	Build   string
 )
 
+// Initialise app and run
 func main() {
 	app, err := InitApp()
 

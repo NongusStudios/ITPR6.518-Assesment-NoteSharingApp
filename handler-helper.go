@@ -16,6 +16,15 @@ type DashboardData struct {
 	Notes               []Note
 }
 
+/*
+  - Creates and executes a template
+  - Args:
+    w: http response writer
+    name: name of the template
+    path: path to the template markup
+    funcMap: template functions
+    data: data to be parsed to the template
+*/
 func executeTemplate(w http.ResponseWriter, name, path string, funcMap template.FuncMap, data any) {
 	t, err := template.New(name).Funcs(funcMap).ParseFiles(path)
 	checkInternalServerError(err, w)
@@ -23,6 +32,13 @@ func executeTemplate(w http.ResponseWriter, name, path string, funcMap template.
 	checkInternalServerError(err, w)
 }
 
+/*
+- Creates a session for a user
+-args:
+
+	w: http response writer
+	user: user to create a session for
+*/
 func createUserSession(w http.ResponseWriter, user User) {
 	s := session.NewSessionOptions(&session.SessOptions{
 		CAttrs: map[string]interface{}{"username": user.Username, "userid": user.Id},
@@ -31,6 +47,10 @@ func createUserSession(w http.ResponseWriter, user User) {
 	session.Add(s, w)
 }
 
+/*
+- Fetches every note from the database
+return: List of notes or, an error
+*/
 func (a *App) fetchNotes() ([]Note, error) {
 	noteCount := 0
 
@@ -67,7 +87,15 @@ func (a *App) fetchNotes() ([]Note, error) {
 	return notes, nil
 }
 
-// Returns slice of notes that user has access to
+/*
+- Filters a list of notes so that it only contains what the user has access to.
+Args:
+
+	user: user that will be used to filter the notes
+	notes: list of notes to be filtered
+
+return: list of filtered notes
+*/
 func getAccessibleNotes(user User, notes []Note) []Note {
 	filteredNotes := make([]Note, 0, len(notes))
 	for _, note := range notes {
@@ -85,6 +113,18 @@ func getAccessibleNotes(user User, notes []Note) []Note {
 	return filteredNotes
 }
 
+/*
+- Filters a list of notes by keyword, user, date and flag
+Args:
+
+	notes: notes to be filtered
+	keyword: if note.Name or note.Content contains keyword then add to filteredNotes
+	user: if note.Owner == user then add to filteredNotes
+	date: if note.Date or note.CompletionDate == date then add to filteredNotes
+	flag: if note.Flag == flag then add to filteredNotes
+
+return: list of filtered notes
+*/
 func searchNotes(notes []Note, keyword string, user int, date string, flag int) []Note {
 	filteredNotes := make([]Note, 0, len(notes))
 
@@ -121,6 +161,14 @@ func searchNotes(notes []Note, keyword string, user int, date string, flag int) 
 	return filteredNotes
 }
 
+/*
+- Fetches the current user using the current session
+Args:
+
+	r: http request
+
+return: the current user or an error
+*/
 func (a *App) fetchCurrentUser(r *http.Request) (User, error) {
 	sess := session.Get(r)
 	name := "[guest]"
@@ -138,6 +186,14 @@ func (a *App) fetchCurrentUser(r *http.Request) (User, error) {
 	return user, nil
 }
 
+/*
+- Fetches the settings for a user
+Args:
+
+	user: the user settings are fetched for
+
+return: user settings or an error
+*/
 func (a *App) fetchUserSettings(user User) (UserSettings, error) {
 	var settings UserSettings
 	err := a.db.QueryRow("SELECT setting_id, user_id, colleagues FROM user_settings WHERE user_id=$1", user.Id).Scan(&settings.Id, &settings.UserId, &settings.Colleagues)
@@ -147,7 +203,14 @@ func (a *App) fetchUserSettings(user User) (UserSettings, error) {
 	return settings, nil
 }
 
-// exclude - exclude this user from list
+/*
+- Fetches every user except the excluded one
+Args:
+
+	exclude: user to be excluded
+
+return: list of users or an error
+*/
 func (a *App) fetchUsersExclude(exclude User) ([]User, error) {
 	rows, err := a.db.Query("SELECT user_id, username, pass FROM users WHERE username!=$1 AND username!='__placeholder__user__'", exclude.Username)
 	if err != nil {
@@ -167,13 +230,30 @@ func (a *App) fetchUsersExclude(exclude User) ([]User, error) {
 	return users, nil
 }
 
-// Run this before sending user data to the website
+/*
+- Clears user.Password from list of users.
+- Use before sending user data to the client.\
+Args:
+
+	users: list of users
+*/
 func clearUserPasswordHash(users []User) {
 	for i := range users {
 		users[i].Password = ""
 	}
 }
 
+/*
+- gets share details from share fieldset
+Args:
+
+	formIdPrefix: input name prefix (e.g. 'create')
+	otherUsers: list of users excluding the current one
+	w: http response writer
+	r: http request
+
+return: list of user ids
+*/
 func getShareDetails(formIdPrefix string, otherUsers []User, w http.ResponseWriter, r *http.Request) []int {
 	var share []int
 

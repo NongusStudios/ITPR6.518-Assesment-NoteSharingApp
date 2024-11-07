@@ -27,6 +27,10 @@ type App struct {
 	//role     string
 }
 
+/*
+- Chooses a port to host the server on
+return: chosen port
+*/
 func findBindPort() string {
 	port := "8080"
 
@@ -46,6 +50,10 @@ func findBindPort() string {
 	return port
 }
 
+/*
+- connects to the database
+return: handle to the database or an error
+*/
 func connectToPostgreSQL() (*sql.DB, error) {
 	dbInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
 		dbHost, dbPort, dbUser, dbPassword, dbName)
@@ -67,6 +75,10 @@ func connectToPostgreSQL() (*sql.DB, error) {
 	return db, nil
 }
 
+/*
+- Initialises the mux router
+return: handle to the router
+*/
 func initRouter(a *App) *mux.Router {
 	r := mux.NewRouter()
 
@@ -91,6 +103,10 @@ func initRouter(a *App) *mux.Router {
 	return r
 }
 
+/*
+- Initialises the app
+return: the app or an error
+*/
 func InitApp() (App, error) {
 	a := App{}
 
@@ -120,6 +136,9 @@ func InitApp() (App, error) {
 	return a, nil
 }
 
+/*
+- runs the application and closes it when ctrl-c is pressed
+*/
 func (a *App) Run() {
 	// get the local IP that has Internet connectivity
 	ip := GetOutboundIP()

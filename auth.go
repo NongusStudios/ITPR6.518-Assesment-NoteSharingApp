@@ -10,6 +10,15 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+/*
+- Checks if the current session is valid
+Args:
+
+	w: http response writer
+	r: http request
+
+return: true if current session is valid
+*/
 func isAuthenticated(w http.ResponseWriter, r *http.Request) bool {
 	authenticated := false
 
@@ -35,13 +44,15 @@ func isAuthenticated(w http.ResponseWriter, r *http.Request) bool {
 	return authenticated
 }
 
+/*
+- Setup a cookie manager for sessions
+*/
 func setupAuth() {
 	// Initialize the session manager - this is a global
 	// For testing purposes, we want cookies to be sent over HTTP too (not just HTTPS)
 	// refer to the auth.go for the authentication handlers using the sessions
 	session.Global.Close()
 	session.Global = session.NewCookieManagerOptions(session.NewInMemStore(), &session.CookieMngrOptions{AllowHTTP: true})
-
 }
 
 type AuthData struct {
