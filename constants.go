@@ -22,4 +22,12 @@ const (
 	NoteFlagCompleted
 	NoteFlagCancelled
 	NoteFlagDelegated
+	NoteFlagMax
+)
+
+// Global Constants
+const (
+	UsernameMaxLength = 255
+	PasswordMaxLength = 255
+	NoteNameMaxLength = 255
 )

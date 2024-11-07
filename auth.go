@@ -100,8 +100,12 @@ func (a *App) registerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	username := r.FormValue("username")
-	password := r.FormValue("password")
+	usernameRaw := r.FormValue("username")
+	passwordRaw := r.FormValue("password")
+
+	// Limit username and password length using a slice
+	username := usernameRaw[:minInt(len(usernameRaw), UsernameMaxLength)]
+	password := passwordRaw[:minInt(len(passwordRaw), PasswordMaxLength)]
 
 	// User name can't contain spaces. My reasoning is that sql statements require spaces so sql injection would be impossible
 	if !ValidateString(username, []rune{' '}, []ValidateRequire{}) {

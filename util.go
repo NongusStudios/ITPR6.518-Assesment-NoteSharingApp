@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"log"
 	"net"
 	"net/http"
@@ -13,18 +12,6 @@ func checkInternalServerError(err error, w http.ResponseWriter) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-}
-
-func respondWithError(w http.ResponseWriter, code int, message string) {
-	respondWithJSON(w, code, map[string]string{"error": message})
-}
-
-func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
-	response, _ := json.Marshal(payload)
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	w.Write(response)
 }
 
 // used to auto detect the active local IP address - not used yet
@@ -70,4 +57,11 @@ func ValidateString(s string, blacklist []rune, requires []ValidateRequire) bool
 	}
 
 	return true
+}
+
+func minInt(x int, y int) int {
+	if x > y {
+		return y
+	}
+	return x
 }
